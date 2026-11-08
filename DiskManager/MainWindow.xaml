@@ -1,0 +1,244 @@
+<Window x:Class="DiskManager.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DiskManager"
+        mc:Ignorable="d"
+        Title="磁盘文件管理器" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="1" x:Name="MainTabControl">
+            <TabItem Header="磁盘概览">
+                <ScrollViewer>
+                    <StackPanel Margin="10">
+                        <TextBlock Text="磁盘空间概览" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <ListView x:Name="DiskListView" Margin="0,0,0,20">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="盘符" Width="80" DisplayMemberBinding="{Binding DriveLetter}"/>
+                                    <GridViewColumn Header="名称" Width="120" DisplayMemberBinding="{Binding Name}"/>
+                                    <GridViewColumn Header="总容量" Width="100" DisplayMemberBinding="{Binding TotalSizeFormatted}"/>
+                                    <GridViewColumn Header="已使用" Width="100" DisplayMemberBinding="{Binding UsedSpaceFormatted}"/>
+                                    <GridViewColumn Header="剩余空间" Width="100" DisplayMemberBinding="{Binding FreeSpaceFormatted}"/>
+                                    <GridViewColumn Header="使用率" Width="100">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ProgressBar Value="{Binding UsedPercentage, Mode=OneWay}" Maximum="100" Height="20" Width="80"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                        
+                        <Button x:Name="RefreshDiskButton" Content="刷新磁盘信息" Click="RefreshDiskButton_Click" Width="120" HorizontalAlignment="Left"/>
+                        
+                        <TextBlock Text="空间使用趋势" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
+                        <TextBlock x:Name="TrendTextBlock" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="操作日志" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
+                        <ListView x:Name="LogListView" Height="200">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="时间" Width="150" DisplayMemberBinding="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}"/>
+                                    <GridViewColumn Header="操作" Width="100" DisplayMemberBinding="{Binding Operation}"/>
+                                    <GridViewColumn Header="详情" Width="300" DisplayMemberBinding="{Binding Details}"/>
+                                    <GridViewColumn Header="状态" Width="80">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding IsSuccess, Converter={StaticResource BooleanToStatusConverter}}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="大文件">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="扫描路径:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox x:Name="LargeFileScanPath" Width="300" Margin="0,0,10,0" Text="C:\"/>
+                        <TextBlock Text="最小文件大小(MB):" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox x:Name="MinFileSizeMB" Width="80" Margin="0,0,10,0" Text="100"/>
+                        <Button x:Name="ScanLargeFilesButton" Content="扫描大文件" Click="ScanLargeFilesButton_Click" Width="100" Margin="0,0,10,0"/>
+                    </StackPanel>
+                    
+                    <ListView Grid.Row="1" x:Name="LargeFilesListView">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="文件名" Width="250" DisplayMemberBinding="{Binding Name}"/>
+                                <GridViewColumn Header="路径" Width="400" DisplayMemberBinding="{Binding FullPath}"/>
+                                <GridViewColumn Header="大小" Width="120" DisplayMemberBinding="{Binding SizeFormatted}"/>
+                                <GridViewColumn Header="修改时间" Width="150" DisplayMemberBinding="{Binding LastModified, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button x:Name="DeleteLargeFileButton" Content="删除选中文件" Click="DeleteLargeFileButton_Click" Width="120" Margin="0,0,10,0"/>
+                        <Button x:Name="OpenFileLocationButton" Content="打开文件位置" Click="OpenFileLocationButton_Click" Width="120"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="重复文件">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="扫描路径:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox x:Name="DuplicateScanPath" Width="400" Margin="0,0,10,0" Text="C:\"/>
+                        <Button x:Name="ScanDuplicatesButton" Content="扫描重复文件" Click="ScanDuplicatesButton_Click" Width="120"/>
+                    </StackPanel>
+                    
+                    <ProgressBar Grid.Row="1" x:Name="DuplicateScanProgressBar" Height="20" VerticalAlignment="Top" Visibility="Collapsed"/>
+                    <TextBlock Grid.Row="1" x:Name="DuplicateScanStatus" VerticalAlignment="Top" Margin="0,30,0,0" Visibility="Collapsed"/>
+                    
+                    <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" Margin="0,60,0,0">
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Files}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Text=" (" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding FileSizeFormatted}"/>
+                                    <TextBlock Text=") - 浪费: " Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding TotalWastedSpaceFormatted}" Foreground="Red"/>
+                                </StackPanel>
+                                <HierarchicalDataTemplate.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FullPath}"/>
+                                    </DataTemplate>
+                                </HierarchicalDataTemplate.ItemTemplate>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                    
+                    <Button Grid.Row="2" x:Name="DeleteDuplicatesButton" Content="删除重复文件(保留一个)" Click="DeleteDuplicatesButton_Click" Width="150" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="清理建议">
+                <ScrollViewer>
+                    <StackPanel Margin="10">
+                        <Button x:Name="ScanCleanupButton" Content="扫描清理建议" Click="ScanCleanupButton_Click" Width="120" Margin="0,0,0,10"/>
+                        
+                        <ItemsControl x:Name="CleanupSuggestionsItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Category}" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock Text=" - " Margin="5,0,5,0"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="Gray"/>
+                                                <TextBlock Text=" - " Margin="5,0,5,0"/>
+                                                <TextBlock Text="{Binding TotalSizeFormatted}" Foreground="{Binding IsSafeToDelete, Converter={StaticResource BooleanToColorConverter}}"/>
+                                                <TextBlock Text=" (" Margin="5,0,0,0"/>
+                                                <TextBlock Text="{Binding Files.Count}"/>
+                                                <TextBlock Text=" 个文件)"/>
+                                            </StackPanel>
+                                            <CheckBox x:Name="SelectAllCheckBox" Content="全选" Margin="0,5,0,5" Click="CleanupSelectAll_Click"/>
+                                            <ListView ItemsSource="{Binding Files}" Height="150" Margin="0,5,0,0">
+                                                <ListView.View>
+                                                    <GridView>
+                                                        <GridViewColumn Header="选择" Width="60">
+                                                            <GridViewColumn.CellTemplate>
+                                                                <DataTemplate>
+                                                                    <CheckBox IsChecked="{Binding IsSelected}"/>
+                                                                </DataTemplate>
+                                                            </GridViewColumn.CellTemplate>
+                                                        </GridViewColumn>
+                                                        <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
+                                                        <GridViewColumn Header="路径" Width="350" DisplayMemberBinding="{Binding FullPath}"/>
+                                                        <GridViewColumn Header="大小" Width="100" DisplayMemberBinding="{Binding SizeFormatted}"/>
+                                                    </GridView>
+                                                </ListView.View>
+                                            </ListView>
+                                            <Button Content="删除选中文件" Click="CleanupDeleteSelected_Click" Tag="{Binding}" Width="120" HorizontalAlignment="Right" Margin="0,10,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="文件操作">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button x:Name="AddFilesButton" Content="添加文件" Click="AddFilesButton_Click" Width="100" Margin="0,0,10,0"/>
+                        <Button x:Name="AddFolderButton" Content="添加文件夹" Click="AddFolderButton_Click" Width="100" Margin="0,0,10,0"/>
+                        <Button x:Name="ClearListButton" Content="清空列表" Click="ClearListButton_Click" Width="100"/>
+                    </StackPanel>
+                    
+                    <ListView Grid.Row="1" x:Name="FileOperationListView">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="选择" Width="60">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
+                                <GridViewColumn Header="路径" Width="400" DisplayMemberBinding="{Binding FullPath}"/>
+                                <GridViewColumn Header="大小" Width="120" DisplayMemberBinding="{Binding SizeFormatted}"/>
+                                <GridViewColumn Header="类型" Width="80">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding IsDirectory, Converter={StaticResource BooleanToTypeConverter}}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button x:Name="BatchCopyButton" Content="批量复制" Click="BatchCopyButton_Click" Width="100" Margin="0,0,10,0"/>
+                        <Button x:Name="BatchMoveButton" Content="批量移动" Click="BatchMoveButton_Click" Width="100" Margin="0,0,10,0"/>
+                        <Button x:Name="BatchDeleteButton" Content="批量删除" Click="BatchDeleteButton_Click" Width="100"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusTextBlock" Text="就绪"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <ProgressBar x:Name="MainProgressBar" Width="200" Height="18" Visibility="Collapsed"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
