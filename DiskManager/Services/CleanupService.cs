@@ -38,7 +38,7 @@ public class CleanupService
         throttled.Report(20, true);
 
         cancellationToken.ThrowIfCancellationRequested();
-        suggestions.Add(BuildRecycleBinSuggestion());
+        suggestions.Add(BuildRecycleBinSuggestion(driveLetter));
         throttled.Report(40, true);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -88,18 +88,39 @@ public class CleanupService
         yield return windowsTemp;
     }
 
-    private CleanupSuggestion BuildRecycleBinSuggestion()
+    private CleanupSuggestion BuildRecycleBinSuggestion(string? driveLetter)
     {
-        var info = _recycleBin.Query();
+        var driveRoot = NormalizeDriveRoot(driveLetter);
+        var info = _recycleBin.Query(driveRoot);
         return new CleanupSuggestion
         {
             Kind = CleanupKind.RecycleBin,
-            Category = "回收站",
-            Description = "回收站中的文件，清空后无法恢复",
+            Category = driveRoot == null ? "回收站" : $"回收站 {driveRoot}",
+            Description = driveRoot == null
+                ? "所有磁盘回收站中的文件，清空后无法恢复"
+                : $"{driveRoot} 回收站中的文件，清空后无法恢复",
             IsSafeToDelete = true,
             TotalSize = info.Size,
             ItemCount = info.ItemCount
         };
+    }
+
+    public static string? NormalizeDriveRoot(string? driveLetter)
+    {
+        if (string.IsNullOrWhiteSpace(driveLetter))
+        {
+            return null;
+        }
+
+        var trimmed = driveLetter.Trim();
+        if (trimmed.EndsWith("\\", StringComparison.Ordinal))
+        {
+            trimmed = trimmed.Substring(0, trimmed.Length - 1);
+        }
+
+        return trimmed.Length == 2 && char.IsLetter(trimmed[0]) && trimmed[1] == ':'
+            ? trimmed + "\\"
+            : null;
     }
 
     private CleanupSuggestion BuildBrowserCacheSuggestion(CancellationToken cancellationToken)
@@ -203,28 +224,16 @@ public class CleanupService
         var before = suggestion.Files.Count;
         try
         {
-            foreach (var file in Directory.EnumerateFiles(path, "*", ScanOptions.Create(recursive)))
+            if (recursive)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (_guard.IsProtected(file))
+                FileWalker.WalkFiles(path, cancellationToken, file => AddFile(file, suggestion));
+            }
+            else
+            {
+                foreach (var file in Directory.EnumerateFiles(path, "*", ScanOptions.Create()))
                 {
-                    continue;
-                }
-
-                try
-                {
-                    var info = new FileInfo(file);
-                    suggestion.Files.Add(new FileItem
-                    {
-                        FullPath = file,
-                        Size = info.Length,
-                        LastModified = info.LastWriteTime,
-                        IsDirectory = false
-                    });
-                    suggestion.TotalSize += info.Length;
-                }
-                catch (Exception)
-                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    AddFile(file, suggestion);
                 }
             }
         }
@@ -239,6 +248,30 @@ public class CleanupService
         if (suggestion.Files.Count != before)
         {
             suggestion.NotifyFilesChanged();
+        }
+    }
+
+    private void AddFile(string file, CleanupSuggestion suggestion)
+    {
+        if (_guard.IsProtected(file))
+        {
+            return;
+        }
+
+        try
+        {
+            var info = new FileInfo(file);
+            suggestion.Files.Add(new FileItem
+            {
+                FullPath = file,
+                Size = info.Length,
+                LastModified = info.LastWriteTime,
+                IsDirectory = false
+            });
+            suggestion.TotalSize += info.Length;
+        }
+        catch (Exception)
+        {
         }
     }
 

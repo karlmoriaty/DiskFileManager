@@ -243,14 +243,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void UpdateTrend()
     {
-        var history = _monitor.GetHistoryForDrive("C:", 7);
+        var systemDrive = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
+        var history = _monitor.GetHistoryForDrive(systemDrive, 7);
         if (history.Count < 2)
         {
             TrendText = "数据不足，无法计算趋势。请保持程序运行以收集更多数据。";
             return;
         }
 
-        var trend = _monitor.GetTrendForDrive("C:", 7);
+        var trend = _monitor.GetTrendForDrive(systemDrive, 7);
         if (trend.IsIncreasing)
         {
             TrendText = $"磁盘使用趋势: {trend.DailyChangeFormatted}\n警告: 预计 {trend.EstimatedDaysUntilFull} 天后磁盘将满。";
@@ -394,6 +395,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        var targetSet = new HashSet<FileItem>(targets);
+
         await RunBusyAsync("正在删除重复文件...", async token =>
         {
             var result = await _files.DeleteAsync(
@@ -403,7 +406,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             {
                 foreach (var file in group.Files.ToList())
                 {
-                    if (targets.Contains(file) && !File.Exists(file.FullPath))
+                    if (targetSet.Contains(file) && !File.Exists(file.FullPath))
                     {
                         group.Files.Remove(file);
                     }
@@ -465,9 +468,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            await RunBusyAsync("正在清空回收站...", token =>
+            await RunBusyAsync("正在清空回收站...", async token =>
             {
-                var ok = _recycleBin.Empty();
+                var driveRoot = CleanupService.NormalizeDriveRoot(SelectedCleanupDrive);
+                var ok = await Task.Run(() => _recycleBin.Empty(driveRoot), token);
                 _log.Log("清空回收站", ok ? "回收站已清空" : "清空回收站失败", ok);
                 if (ok)
                 {
@@ -480,7 +484,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     _dialogs.Error("清空回收站失败，请确认权限。");
                 }
 
-                return Task.CompletedTask;
             });
             return;
         }
@@ -714,11 +717,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         StatusText = status;
         IsProgressIndeterminate = indeterminate;
         ProgressValue = 0;
-        _cts = new CancellationTokenSource();
+        var active = new CancellationTokenSource();
+        _cts = active;
 
         try
         {
-            await work(_cts.Token);
+            await work(active.Token);
         }
         catch (OperationCanceledException)
         {
@@ -735,8 +739,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             IsBusy = false;
             IsProgressIndeterminate = false;
             ProgressValue = 0;
-            _cts.Dispose();
-            _cts = null;
+            Interlocked.CompareExchange(ref _cts, null, active);
+            active.Dispose();
         }
     }
 
@@ -782,8 +786,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _monitor.StopMonitoring();
         }
 
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
+        var active = Interlocked.Exchange(ref _cts, null);
+        active?.Cancel();
+        active?.Dispose();
     }
 }

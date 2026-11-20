@@ -163,6 +163,9 @@
                             <Button Content="扫描清理建议" Command="{Binding ScanCleanupCommand}" Width="120"/>
                         </StackPanel>
 
+                        <TextBlock Text="提示：回收站按所选磁盘统计和清空；临时文件与浏览器缓存固定在系统盘和当前用户目录。"
+                                   Foreground="Gray" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
                         <ItemsControl x:Name="CleanupSuggestionsItemsControl" ItemsSource="{Binding CleanupSuggestions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>

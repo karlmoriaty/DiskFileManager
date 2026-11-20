@@ -9,7 +9,15 @@ public class FileItem : ObservableObject
     private bool _isSelected;
 
     public string FullPath { get; set; } = string.Empty;
-    public string Name => Path.GetFileName(FullPath.TrimEnd(Path.DirectorySeparatorChar));
+    public string Name
+    {
+        get
+        {
+            var trimmed = FullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var name = Path.GetFileName(trimmed);
+            return string.IsNullOrEmpty(name) ? trimmed : name;
+        }
+    }
     public long Size { get; set; }
     public DateTime LastModified { get; set; }
     public string Extension => Path.GetExtension(FullPath).ToLowerInvariant();

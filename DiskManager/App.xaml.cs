@@ -9,11 +9,13 @@ namespace DiskManager;
 public partial class App : Application
 {
     private Mutex? _instanceMutex;
+    private bool _ownsInstanceMutex;
     private string? _diagnosticLogPath;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         _instanceMutex = new Mutex(true, @"Local\DiskManager_SingleInstance", out var isFirstInstance);
+        _ownsInstanceMutex = isFirstInstance;
         if (!isFirstInstance)
         {
             MessageBox.Show("磁盘文件管理器已经在运行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -98,7 +100,17 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         WriteDiagnosticLog($"应用程序退出，代码 {e.ApplicationExitCode}");
-        _instanceMutex?.ReleaseMutex();
+        if (_ownsInstanceMutex)
+        {
+            try
+            {
+                _instanceMutex?.ReleaseMutex();
+            }
+            catch (ApplicationException)
+            {
+            }
+        }
+
         _instanceMutex?.Dispose();
         base.OnExit(e);
     }

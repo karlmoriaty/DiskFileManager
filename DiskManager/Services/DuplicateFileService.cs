@@ -150,20 +150,15 @@ public class DuplicateFileService
             using var sha = SHA256.Create();
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
             var buffer = new byte[SampleBytes];
-            var read = stream.Read(buffer, 0, buffer.Length);
-            if (read > 0)
-            {
-                sha.TransformBlock(buffer, 0, read, null, 0);
-            }
+            var headLength = (int)Math.Min(SampleBytes, stream.Length);
+            stream.ReadExactly(buffer, 0, headLength);
+            sha.TransformBlock(buffer, 0, headLength, null, 0);
 
             if (stream.Length > SampleBytes * 2)
             {
                 stream.Seek(-SampleBytes, SeekOrigin.End);
-                read = stream.Read(buffer, 0, buffer.Length);
-                if (read > 0)
-                {
-                    sha.TransformBlock(buffer, 0, read, null, 0);
-                }
+                stream.ReadExactly(buffer, 0, SampleBytes);
+                sha.TransformBlock(buffer, 0, SampleBytes, null, 0);
             }
 
             sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);

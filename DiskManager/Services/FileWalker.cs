@@ -7,6 +7,18 @@ namespace DiskManager.Services;
 
 public static class FileWalker
 {
+    public static bool IsReparsePoint(string path)
+    {
+        try
+        {
+            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
+
     public static void WalkFiles(string path, CancellationToken cancellationToken, Action<string> onFile)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
@@ -43,6 +55,11 @@ public static class FileWalker
                 foreach (var directory in Directory.EnumerateDirectories(current, "*", ScanOptions.Create()))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (IsReparsePoint(directory))
+                    {
+                        continue;
+                    }
+
                     stack.Push(directory);
                 }
             }

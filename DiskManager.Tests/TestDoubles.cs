@@ -9,6 +9,8 @@ internal sealed class FakeRecycleBin : IRecycleBinService
     public List<string> Recycled { get; } = new();
     public int EmptyCalls { get; private set; }
     public RecycleBinInfo Info { get; set; } = new(0, 0);
+    public string? LastQueryRoot { get; private set; }
+    public string? LastEmptyRoot { get; private set; }
 
     public bool Recycle(string path, bool isDirectory)
     {
@@ -28,13 +30,18 @@ internal sealed class FakeRecycleBin : IRecycleBinService
         return true;
     }
 
-    public bool Empty()
+    public bool Empty(string? driveRoot = null)
     {
         EmptyCalls++;
+        LastEmptyRoot = driveRoot;
         return true;
     }
 
-    public RecycleBinInfo Query() => Info;
+    public RecycleBinInfo Query(string? driveRoot = null)
+    {
+        LastQueryRoot = driveRoot;
+        return Info;
+    }
 }
 
 internal sealed class FakeDialogService : IDialogService

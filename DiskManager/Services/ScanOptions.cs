@@ -8,7 +8,7 @@ public static class ScanOptions
     {
         IgnoreInaccessible = true,
         RecurseSubdirectories = recursive,
-        AttributesToSkip = FileAttributes.ReparsePoint,
+        AttributesToSkip = 0,
         ReturnSpecialDirectories = false
     };
 }
