@@ -105,7 +105,7 @@ public sealed class FileOperationService
             return result;
         }
 
-        if (_guard.IsProtected(destinationFolder) && !Directory.Exists(destinationFolder))
+        if (_guard.IsProtected(destinationFolder))
         {
             result.MarkFailed($"拒绝写入受保护路径: {destinationFolder}");
             return result;
@@ -132,6 +132,12 @@ public sealed class FileOperationService
             if (string.IsNullOrEmpty(name))
             {
                 result.MarkFailed($"无法确定源名称: {source}");
+                continue;
+            }
+
+            if (Directory.Exists(source) && PathGuard.IsStrictlyInside(destinationFolder, source))
+            {
+                result.MarkFailed($"目标目录位于源目录内部，已跳过: {source}");
                 continue;
             }
 
@@ -199,6 +205,7 @@ public sealed class FileOperationService
 
             try
             {
+                var fileCount = isDirectory ? CountFilesInDirectory(path, cancellationToken) : 1;
                 var ok = mode == DeleteMode.RecycleBin
                     ? _recycleBin.Recycle(path, isDirectory)
                     : DeletePermanent(path, isDirectory);
@@ -206,14 +213,7 @@ public sealed class FileOperationService
                 if (ok)
                 {
                     result.MarkSucceeded();
-                    if (isDirectory)
-                    {
-                        accessor.Advance(CountFilesInDirectory(path, cancellationToken));
-                    }
-                    else
-                    {
-                        accessor.Advance();
-                    }
+                    accessor.Advance(fileCount);
                 }
                 else
                 {
@@ -431,6 +431,12 @@ public sealed class FileOperationService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var fileTarget = Path.Combine(targetDirectory, Path.GetFileName(file));
+                if (conflict == ConflictPolicy.Skip && (File.Exists(fileTarget) || Directory.Exists(fileTarget)))
+                {
+                    accessor.Advance();
+                    continue;
+                }
+
                 var resolved = ResolveFileTarget(file, fileTarget, conflict) ?? fileTarget;
                 File.Copy(file, resolved, conflict == ConflictPolicy.Overwrite);
                 accessor.Advance();
@@ -439,6 +445,11 @@ public sealed class FileOperationService
             foreach (var directory in Directory.EnumerateDirectories(source, "*", ScanOptions.Create()))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (FileWalker.IsReparsePoint(directory))
+                {
+                    continue;
+                }
+
                 var childTarget = Path.Combine(targetDirectory, Path.GetFileName(directory));
                 var outcome = CopyDirectory(directory, childTarget, conflict, cancellationToken, accessor);
                 if (outcome == Outcome.Failed)
@@ -511,26 +522,50 @@ public sealed class FileOperationService
         }
 
         var count = 0;
-        try
+        var stack = new Stack<string>();
+        stack.Push(path);
+
+        while (stack.Count > 0)
         {
-            foreach (var _ in Directory.EnumerateFiles(path, "*", ScanOptions.Create()))
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = stack.Pop();
+
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                count++;
+                foreach (var _ in Directory.EnumerateFiles(current, "*", ScanOptions.Create()))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    count++;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
             }
 
-            foreach (var directory in Directory.EnumerateDirectories(path, "*", ScanOptions.Create()))
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                count += CountFilesInDirectory(directory, cancellationToken);
+                foreach (var directory in Directory.EnumerateDirectories(current, "*", ScanOptions.Create()))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (FileWalker.IsReparsePoint(directory))
+                    {
+                        continue;
+                    }
+
+                    stack.Push(directory);
+                }
             }
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+            }
         }
 
         return count;

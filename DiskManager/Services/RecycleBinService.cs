@@ -69,16 +69,16 @@ public sealed class RecycleBinService : IRecycleBinService
         return result == 0 && operation.AnyOperationsAborted == 0;
     }
 
-    public bool Empty()
+    public bool Empty(string? driveRoot = null)
     {
-        var result = SHEmptyRecycleBin(IntPtr.Zero, null, SherbNoConfirmation | SherbNoProgressUi | SherbNoSound);
+        var result = SHEmptyRecycleBin(IntPtr.Zero, driveRoot, SherbNoConfirmation | SherbNoProgressUi | SherbNoSound);
         return result == 0;
     }
 
-    public RecycleBinInfo Query()
+    public RecycleBinInfo Query(string? driveRoot = null)
     {
         var info = new ShQueryRbInfo { CbSize = Marshal.SizeOf<ShQueryRbInfo>() };
-        var result = SHQueryRecycleBin(null, ref info);
+        var result = SHQueryRecycleBin(driveRoot, ref info);
         if (result != 0)
         {
             return new RecycleBinInfo(0, 0);
