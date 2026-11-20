@@ -4,258 +4,244 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
 using DiskManager.Models;
+using DiskManager.Utils;
 using Timer = System.Threading.Timer;
 
-namespace DiskManager.Services
+namespace DiskManager.Services;
+
+public class DiskMonitorService
 {
-    public class DiskMonitorService
+    private readonly object _gate = new();
+    private readonly string? _dataDirectory;
+    private readonly string? _historyFilePath;
+    private readonly bool _filePersistenceEnabled;
+    private readonly List<DiskSpaceHistory> _history = new();
+    private Timer? _monitorTimer;
+    private volatile bool _isMonitoring;
+
+    public event EventHandler<IReadOnlyList<DiskInfo>>? SnapshotCaptured;
+
+    public DiskMonitorService(string? dataDirectory = null)
     {
-        private readonly string? _dataDirectory;
-        private readonly string? _historyFilePath;
-        private readonly bool _filePersistenceEnabled;
-        private Timer? _monitorTimer;
-        private bool _isMonitoring;
-        private readonly List<DiskSpaceHistory> _inMemoryHistory = new();
-
-        public event EventHandler<DiskInfo>? DiskSpaceChanged;
-        public event EventHandler<List<DiskSpaceHistory>>? HistoryUpdated;
-
-        public DiskMonitorService()
+        try
         {
-            try
-            {
-                _dataDirectory = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "DiskManager",
-                    "Data");
+            _dataDirectory = dataDirectory ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DiskManager",
+                "Data");
 
-                if (!Directory.Exists(_dataDirectory))
-                {
-                    Directory.CreateDirectory(_dataDirectory);
-                }
+            Directory.CreateDirectory(_dataDirectory);
+            _historyFilePath = Path.Combine(_dataDirectory, "DiskSpaceHistory.json");
+            _filePersistenceEnabled = true;
 
-                _historyFilePath = Path.Combine(_dataDirectory, "DiskSpaceHistory.json");
-                _filePersistenceEnabled = true;
-                
-                var loadedHistory = LoadHistoryFromFile();
-                _inMemoryHistory.AddRange(loadedHistory);
-            }
-            catch (Exception)
+            var loaded = LoadHistoryFromFile();
+            lock (_gate)
             {
-                _filePersistenceEnabled = false;
+                _history.AddRange(loaded);
             }
         }
-
-        public void StartMonitoring(int intervalMinutes = 60)
+        catch (Exception)
         {
-            if (_isMonitoring) return;
+            _filePersistenceEnabled = false;
+        }
+    }
 
-            _isMonitoring = true;
-            var interval = TimeSpan.FromMinutes(intervalMinutes);
-            _monitorTimer = new Timer(OnMonitorTick, null, TimeSpan.Zero, interval);
+    public bool IsMonitoring => _isMonitoring;
+
+    public void StartMonitoring(int intervalMinutes = 60)
+    {
+        if (_isMonitoring)
+        {
+            return;
         }
 
-        public void StopMonitoring()
-        {
-            _isMonitoring = false;
-            _monitorTimer?.Dispose();
-            _monitorTimer = null;
-        }
+        _isMonitoring = true;
+        var interval = TimeSpan.FromMinutes(Math.Max(1, intervalMinutes));
+        _monitorTimer = new Timer(_ => CaptureSnapshot(), null, TimeSpan.Zero, interval);
+    }
 
-        private void OnMonitorTick(object? state)
+    public void StopMonitoring()
+    {
+        _isMonitoring = false;
+        var timer = Interlocked.Exchange(ref _monitorTimer, null);
+        timer?.Dispose();
+    }
+
+    public void CaptureSnapshot()
+    {
+        try
         {
+            var disks = DiskEnumerator.GetReadyDisks();
+            RecordSnapshot(disks);
             try
             {
-                var disks = GetAllDisks();
-                SaveDiskSpaceHistory(disks);
-
-                foreach (var disk in disks)
-                {
-                    DiskSpaceChanged?.Invoke(this, disk);
-                }
+                SnapshotCaptured?.Invoke(this, disks);
             }
             catch (Exception)
             {
             }
         }
-
-        public List<DiskInfo> GetAllDisks()
+        catch (Exception)
         {
-            var disks = new List<DiskInfo>();
-            foreach (var drive in DriveInfo.GetDrives())
-            {
-                if (drive.IsReady && drive.DriveType == DriveType.Fixed)
-                {
-                    disks.Add(new DiskInfo
-                    {
-                        DriveLetter = drive.Name,
-                        Name = drive.VolumeLabel,
-                        TotalSize = drive.TotalSize,
-                        UsedSpace = drive.TotalSize - drive.AvailableFreeSpace,
-                        FreeSpace = drive.AvailableFreeSpace
-                    });
-                }
-            }
-            return disks;
         }
+    }
 
-        private void SaveDiskSpaceHistory(List<DiskInfo> disks)
+    public void RecordSnapshot(IReadOnlyList<DiskInfo> disks)
+    {
+        var timestamp = DateTime.Now;
+        var cutoff = timestamp.AddDays(-30);
+
+        lock (_gate)
         {
-            try
+            foreach (var disk in disks)
             {
-                var timestamp = DateTime.Now;
-
-                foreach (var disk in disks)
+                _history.Add(new DiskSpaceHistory
                 {
-                    _inMemoryHistory.Add(new DiskSpaceHistory
-                    {
-                        Timestamp = timestamp,
-                        DriveLetter = disk.DriveLetter,
-                        TotalSize = disk.TotalSize,
-                        UsedSpace = disk.UsedSpace,
-                        FreeSpace = disk.FreeSpace
-                    });
-                }
-
-                var thirtyDaysAgo = DateTime.Now.AddDays(-30);
-                var historyToKeep = _inMemoryHistory.Where(h => h.Timestamp >= thirtyDaysAgo).ToList();
-                _inMemoryHistory.Clear();
-                _inMemoryHistory.AddRange(historyToKeep);
-
-                if (_filePersistenceEnabled && !string.IsNullOrEmpty(_historyFilePath))
-                {
-                    SaveHistoryToFile(_inMemoryHistory);
-                }
-
-                HistoryUpdated?.Invoke(this, _inMemoryHistory);
+                    Timestamp = timestamp,
+                    DriveLetter = disk.DriveLetter,
+                    TotalSize = disk.TotalSize,
+                    UsedSpace = disk.UsedSpace,
+                    FreeSpace = disk.FreeSpace
+                });
             }
-            catch (Exception)
+
+            if (_history.Count > 0)
             {
+                _history.RemoveAll(h => h.Timestamp < cutoff);
             }
         }
 
-        private List<DiskSpaceHistory> LoadHistoryFromFile()
+        SaveHistoryToFile();
+    }
+
+    public List<DiskSpaceHistory> LoadHistory()
+    {
+        lock (_gate)
         {
-            if (!_filePersistenceEnabled || string.IsNullOrEmpty(_historyFilePath))
+            return new List<DiskSpaceHistory>(_history);
+        }
+    }
+
+    public List<DiskSpaceHistory> GetHistoryForDrive(string driveLetter, int days = 30)
+    {
+        var since = DateTime.Now.AddDays(-days);
+        lock (_gate)
+        {
+            return _history
+                .Where(h => string.Equals(h.DriveLetter, driveLetter, StringComparison.OrdinalIgnoreCase)
+                            && h.Timestamp >= since)
+                .OrderBy(h => h.Timestamp)
+                .ToList();
+        }
+    }
+
+    public DiskSpaceTrend GetTrendForDrive(string driveLetter, int days = 7)
+    {
+        var history = GetHistoryForDrive(driveLetter, days);
+        if (history.Count < 2)
+        {
+            return new DiskSpaceTrend
+            {
+                IsIncreasing = false,
+                DailyChangeBytes = 0,
+                EstimatedDaysUntilFull = -1
+            };
+        }
+
+        var origin = history[0].Timestamp;
+        var xs = history.Select(h => (h.Timestamp - origin).TotalDays).ToArray();
+        var ys = history.Select(h => (double)h.UsedSpace).ToArray();
+        var meanX = xs.Average();
+        var meanY = ys.Average();
+
+        var numerator = 0d;
+        var denominator = 0d;
+        for (var index = 0; index < xs.Length; index++)
+        {
+            numerator += (xs[index] - meanX) * (ys[index] - meanY);
+            denominator += (xs[index] - meanX) * (xs[index] - meanX);
+        }
+
+        var slope = denominator > 1e-18 ? numerator / denominator : 0d;
+        var estimated = -1;
+        if (slope > 0)
+        {
+            var free = history[^1].FreeSpace;
+            var raw = free / slope;
+            estimated = raw >= int.MaxValue ? int.MaxValue : (int)raw;
+        }
+
+        return new DiskSpaceTrend
+        {
+            IsIncreasing = slope > 0,
+            DailyChangeBytes = (long)slope,
+            EstimatedDaysUntilFull = estimated
+        };
+    }
+
+    private List<DiskSpaceHistory> LoadHistoryFromFile()
+    {
+        if (!_filePersistenceEnabled || string.IsNullOrEmpty(_historyFilePath))
+        {
+            return new List<DiskSpaceHistory>();
+        }
+
+        try
+        {
+            if (!File.Exists(_historyFilePath))
             {
                 return new List<DiskSpaceHistory>();
             }
 
-            try
-            {
-                if (File.Exists(_historyFilePath))
-                {
-                    var json = File.ReadAllText(_historyFilePath);
-                    return JsonSerializer.Deserialize<List<DiskSpaceHistory>>(json) ?? new List<DiskSpaceHistory>();
-                }
-            }
-            catch (Exception)
-            {
-            }
+            var json = File.ReadAllText(_historyFilePath);
+            return JsonSerializer.Deserialize<List<DiskSpaceHistory>>(json) ?? new List<DiskSpaceHistory>();
+        }
+        catch (Exception)
+        {
             return new List<DiskSpaceHistory>();
         }
-
-        private void SaveHistoryToFile(List<DiskSpaceHistory> history)
-        {
-            if (!_filePersistenceEnabled || string.IsNullOrEmpty(_historyFilePath))
-            {
-                return;
-            }
-
-            try
-            {
-                var json = JsonSerializer.Serialize(history, new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
-
-                File.WriteAllText(_historyFilePath, json);
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        public List<DiskSpaceHistory> LoadHistory()
-        {
-            return new List<DiskSpaceHistory>(_inMemoryHistory);
-        }
-
-        public List<DiskSpaceHistory> GetHistoryForDrive(string driveLetter, int days = 30)
-        {
-            var sinceDate = DateTime.Now.AddDays(-days);
-            return _inMemoryHistory
-                .Where(h => h.DriveLetter.Equals(driveLetter, StringComparison.OrdinalIgnoreCase) && 
-                           h.Timestamp >= sinceDate)
-                .OrderBy(h => h.Timestamp)
-                .ToList();
-        }
-
-        public DiskSpaceTrend GetTrendForDrive(string driveLetter, int days = 7)
-        {
-            var history = GetHistoryForDrive(driveLetter, days);
-            if (history.Count < 2)
-            {
-                return new DiskSpaceTrend
-                {
-                    IsIncreasing = false,
-                    DailyChangeBytes = 0,
-                    EstimatedDaysUntilFull = -1
-                };
-            }
-
-            var first = history.First();
-            var last = history.Last();
-            var daysDiff = (last.Timestamp - first.Timestamp).TotalDays;
-            var usedChange = last.UsedSpace - first.UsedSpace;
-            var dailyChange = daysDiff > 0 ? usedChange / daysDiff : 0;
-
-            var estimatedDaysUntilFull = -1;
-            if (dailyChange > 0 && last.FreeSpace > 0)
-            {
-                estimatedDaysUntilFull = (int)(last.FreeSpace / dailyChange);
-            }
-
-            return new DiskSpaceTrend
-            {
-                IsIncreasing = dailyChange > 0,
-                DailyChangeBytes = (long)dailyChange,
-                EstimatedDaysUntilFull = estimatedDaysUntilFull
-            };
-        }
-
-        public bool IsMonitoring => _isMonitoring;
     }
 
-    public class DiskSpaceHistory
+    private void SaveHistoryToFile()
     {
-        public DateTime Timestamp { get; set; }
-        public string DriveLetter { get; set; } = string.Empty;
-        public long TotalSize { get; set; }
-        public long UsedSpace { get; set; }
-        public long FreeSpace { get; set; }
-    }
-
-    public class DiskSpaceTrend
-    {
-        public bool IsIncreasing { get; set; }
-        public long DailyChangeBytes { get; set; }
-        public int EstimatedDaysUntilFull { get; set; }
-        public string DailyChangeFormatted => FormatSize(Math.Abs(DailyChangeBytes)) + (IsIncreasing ? " /天 (增加)" : " /天 (减少)");
-
-        private static string FormatSize(long bytes)
+        if (!_filePersistenceEnabled || string.IsNullOrEmpty(_historyFilePath))
         {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            int order = 0;
-            double size = bytes;
-            while (size >= 1024 && order < sizes.Length - 1)
+            return;
+        }
+
+        try
+        {
+            List<DiskSpaceHistory> snapshot;
+            lock (_gate)
             {
-                order++;
-                size /= 1024;
+                snapshot = new List<DiskSpaceHistory>(_history);
             }
-            return $"{size:0.##} {sizes[order]}";
+
+            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            var tempPath = _historyFilePath + ".tmp";
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, _historyFilePath, true);
+        }
+        catch (Exception)
+        {
         }
     }
+}
+
+public class DiskSpaceHistory
+{
+    public DateTime Timestamp { get; set; }
+    public string DriveLetter { get; set; } = string.Empty;
+    public long TotalSize { get; set; }
+    public long UsedSpace { get; set; }
+    public long FreeSpace { get; set; }
+}
+
+public class DiskSpaceTrend
+{
+    public bool IsIncreasing { get; set; }
+    public long DailyChangeBytes { get; set; }
+    public int EstimatedDaysUntilFull { get; set; }
+    public string DailyChangeFormatted => SizeFormatter.Format(Math.Abs(DailyChangeBytes)) + (IsIncreasing ? " /天 (增加)" : " /天 (减少)");
 }

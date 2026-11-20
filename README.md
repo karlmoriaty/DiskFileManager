@@ -1,23 +1,46 @@
 # Disk File Manager
 
-A portable Windows disk and file manager built with C#/.NET 8 and WPF. It surveys
+A portable Windows disk and file manager built with C#/.NET 9 and WPF. It surveys
 drives, finds large and duplicate files, suggests safe cleanups, and performs batch
 file operations — from a single self-contained executable that runs off a USB stick
 with no .NET runtime installed.
 
+Version 2.0 focuses on data safety: deletion goes to the recycle bin by default,
+protected system locations are enforced by path boundaries, and every long-running
+scan can be cancelled.
+
 ## Features
 
-- **Disk overview** — capacity, used space, free space and usage percentage per
-  drive.
-- **Large file scan** — lists the files taking up the most space, with path, size
-  and last-modified time.
-- **Duplicate detection** — groups identical files and can delete duplicates while
-  keeping one copy.
-- **Cleanup suggestions** — flags temporary files and caches that are safe to
-  remove, with a suggested action per item.
-- **Batch operations** — add files or whole folders to a work list, then copy, move
-  or delete them in one go.
-- **Operation log** — every action is recorded with its timestamp and result.
+- **Disk overview** — capacity, used space, free space and usage percentage for fixed
+  and removable drives.
+- **Large file scan** — top-N files by size, computed with a bounded heap, with a live
+  scanned-file counter and cancellation.
+- **Duplicate detection** — three-stage pipeline: group by size, pre-filter with a
+  4 KB head/tail SHA-256 sample, then confirm with a full SHA-256 hash. Groups can
+  keep the shortest path, the newest copy, or the oldest copy.
+- **Cleanup suggestions** — temporary files (user and Windows), recycle bin, browser
+  caches (Chrome, Edge, Firefox cache directories, INetCache), Windows Update download
+  cache and Downloads.
+- **Batch operations** — copy, move and delete files or whole directories, with
+  overwrite/skip/rename conflict policies and a cancellable progress bar.
+- **Operation log** — every action is recorded with its timestamp and result; the log
+  file rotates daily and the in-memory buffer is capped.
+
+## Safety model
+
+- Deletion defaults to **recycle bin**. Permanent deletion is an explicit opt-in in the
+  status bar.
+- Protected locations: `Windows`, `Program Files`, `Program Files (x86)`, `ProgramData`,
+  `System32`, `SysWOW64`, `WinSxS`, `Boot`, `Recovery`, every drive root, the user
+  profile root, `System Volume Information` and `$Recycle.Bin`.
+- Matching uses full path boundaries, so `C:\Windows10Backup` is **not** treated as
+  `C:\Windows`.
+- Explicit exceptions for `Windows\Temp`, `SoftwareDistribution\Download` and
+  `Windows\Logs\CBS` (strict children only).
+- Firefox profile data (bookmarks, passwords, logins) is never touched; only
+  `cache2`, `startupCache`, `shader-cache` and `thumbnails` are scanned.
+- Reparse points (junctions/symlinks) are skipped during enumeration to avoid loops
+  and duplicate scans.
 
 ## Requirements
 
@@ -25,6 +48,7 @@ with no .NET runtime installed.
 - No installation and no .NET runtime needed — the published build is
   self-contained and single-file
 - Roughly 100–150 MB of disk space
+- Administrator rights are recommended; the manifest requests `highestAvailable`
 
 ## Running the prebuilt portable build
 
@@ -38,22 +62,30 @@ The first start takes a few seconds while the single-file bundle unpacks itself.
 
 ```powershell
 cd DiskManager
-dotnet publish --configuration Release --runtime win-x64 --self-contained true `
-  --output ..\DiskManager_Portable /p:PublishSingleFile=true `
-  /p:PublishTrimmed=true /p:TrimMode=link /p:DebuggerSupport=false `
-  /p:PublishReadyToRun=true
+dotnet build -c Release
+dotnet test ..\DiskManager.Tests\DiskManager.Tests.csproj -c Release
 ```
 
-Copy `启动程序.bat`, `启动程序.ps1` and the usage notes into
-`DiskManager_Portable` afterwards.
+## Publishing a portable build
+
+```powershell
+cd DiskManager
+dotnet publish -c Release -r win-x64 --self-contained true -o ..\DiskManager_Portable `
+  /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
+  /p:PublishReadyToRun=true
+
+pwsh .\publish-win-x64.ps1
+```
+
+`PublishTrimmed` is intentionally **not** used: trimming is not supported for WPF
+applications and can produce an executable that crashes at runtime.
 
 ## Notes
 
 - Some antivirus engines flag freshly built single-file .NET executables as
   suspicious; add an exclusion if you trust the source.
-- Deletion is permanent — the app confirms before removing files, but there is no
-  recycle-bin step for every operation, so double-check the selection.
-- System files are protected and skipped.
+- The app is single-instance; launching a second copy shows a message and exits.
+- Only one long-running task can run at a time; the cancel button stops it.
 - The UI is in Chinese.
 - WPF only runs on Windows; macOS and Linux are not supported.
 

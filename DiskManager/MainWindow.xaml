@@ -3,23 +3,23 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:DiskManager"
+        xmlns:vm="clr-namespace:DiskManager.ViewModels"
         mc:Ignorable="d"
-        Title="磁盘文件管理器" Height="700" Width="1200"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="磁盘文件管理器" Height="760" Width="1200"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TabControl Grid.Row="1" x:Name="MainTabControl">
+        <TabControl Grid.Row="0" x:Name="MainTabControl">
             <TabItem Header="磁盘概览">
                 <ScrollViewer>
                     <StackPanel Margin="10">
                         <TextBlock Text="磁盘空间概览" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <ListView x:Name="DiskListView" Margin="0,0,0,20">
+                        <ListView x:Name="DiskListView" ItemsSource="{Binding Disks}" Margin="0,0,0,20">
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="盘符" Width="80" DisplayMemberBinding="{Binding DriveLetter}"/>
@@ -37,19 +37,19 @@
                                 </GridView>
                             </ListView.View>
                         </ListView>
-                        
-                        <Button x:Name="RefreshDiskButton" Content="刷新磁盘信息" Click="RefreshDiskButton_Click" Width="120" HorizontalAlignment="Left"/>
-                        
+
+                        <Button Content="刷新磁盘信息" Command="{Binding RefreshDisksCommand}" Width="120" HorizontalAlignment="Left"/>
+
                         <TextBlock Text="空间使用趋势" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
-                        <TextBlock x:Name="TrendTextBlock" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                        
+                        <TextBlock Text="{Binding TrendText}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
                         <TextBlock Text="操作日志" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
-                        <ListView x:Name="LogListView" Height="200">
+                        <ListView x:Name="LogListView" ItemsSource="{Binding Logs}" Height="200">
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="时间" Width="150" DisplayMemberBinding="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}"/>
                                     <GridViewColumn Header="操作" Width="100" DisplayMemberBinding="{Binding Operation}"/>
-                                    <GridViewColumn Header="详情" Width="300" DisplayMemberBinding="{Binding Details}"/>
+                                    <GridViewColumn Header="详情" Width="360" DisplayMemberBinding="{Binding Details}"/>
                                     <GridViewColumn Header="状态" Width="80">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -71,29 +71,40 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    
+
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBlock Text="扫描路径:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBox x:Name="LargeFileScanPath" Width="300" Margin="0,0,10,0" Text="C:\"/>
+                        <TextBox Width="300" Margin="0,0,10,0"
+                                 Text="{Binding LargeFileScanPath, UpdateSourceTrigger=PropertyChanged}"/>
                         <TextBlock Text="最小文件大小(MB):" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBox x:Name="MinFileSizeMB" Width="80" Margin="0,0,10,0" Text="100"/>
-                        <Button x:Name="ScanLargeFilesButton" Content="扫描大文件" Click="ScanLargeFilesButton_Click" Width="100" Margin="0,0,10,0"/>
+                        <TextBox Width="80" Margin="0,0,10,0"
+                                 Text="{Binding MinFileSizeText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Content="扫描大文件" Command="{Binding ScanLargeFilesCommand}" Width="100"/>
                     </StackPanel>
-                    
-                    <ListView Grid.Row="1" x:Name="LargeFilesListView">
+
+                    <ListView Grid.Row="1" x:Name="LargeFilesListView" ItemsSource="{Binding LargeFiles}">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="文件名" Width="250" DisplayMemberBinding="{Binding Name}"/>
+                                <GridViewColumn Header="选择" Width="60">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="文件名" Width="230" DisplayMemberBinding="{Binding Name}"/>
                                 <GridViewColumn Header="路径" Width="400" DisplayMemberBinding="{Binding FullPath}"/>
                                 <GridViewColumn Header="大小" Width="120" DisplayMemberBinding="{Binding SizeFormatted}"/>
                                 <GridViewColumn Header="修改时间" Width="150" DisplayMemberBinding="{Binding LastModified, StringFormat='yyyy-MM-dd HH:mm'}"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
-                    
+
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button x:Name="DeleteLargeFileButton" Content="删除选中文件" Click="DeleteLargeFileButton_Click" Width="120" Margin="0,0,10,0"/>
-                        <Button x:Name="OpenFileLocationButton" Content="打开文件位置" Click="OpenFileLocationButton_Click" Width="120"/>
+                        <Button Content="删除选中文件" Command="{Binding DeleteLargeFilesCommand}" Width="120" Margin="0,0,10,0"/>
+                        <Button Content="打开文件位置" Width="120"
+                                Command="{Binding OpenFileLocationCommand}"
+                                CommandParameter="{Binding SelectedItem, ElementName=LargeFilesListView}"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
@@ -105,17 +116,19 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    
+
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBlock Text="扫描路径:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBox x:Name="DuplicateScanPath" Width="400" Margin="0,0,10,0" Text="C:\"/>
-                        <Button x:Name="ScanDuplicatesButton" Content="扫描重复文件" Click="ScanDuplicatesButton_Click" Width="120"/>
+                        <TextBox Width="300" Margin="0,0,10,0"
+                                 Text="{Binding DuplicateScanPath, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="保留策略:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="160" Margin="0,0,10,0"
+                                  ItemsSource="{Binding KeepStrategyOptions}"
+                                  SelectedIndex="{Binding SelectedKeepStrategyIndex}"/>
+                        <Button Content="扫描重复文件" Command="{Binding ScanDuplicatesCommand}" Width="120"/>
                     </StackPanel>
-                    
-                    <ProgressBar Grid.Row="1" x:Name="DuplicateScanProgressBar" Height="20" VerticalAlignment="Top" Visibility="Collapsed"/>
-                    <TextBlock Grid.Row="1" x:Name="DuplicateScanStatus" VerticalAlignment="Top" Margin="0,30,0,0" Visibility="Collapsed"/>
-                    
-                    <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" Margin="0,60,0,0">
+
+                    <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" ItemsSource="{Binding DuplicateGroups}">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Files}">
                                 <StackPanel Orientation="Horizontal">
@@ -133,17 +146,24 @@
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
-                    
-                    <Button Grid.Row="2" x:Name="DeleteDuplicatesButton" Content="删除重复文件(保留一个)" Click="DeleteDuplicatesButton_Click" Width="150" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+
+                    <Button Grid.Row="2" Content="删除重复文件(按策略保留一个)" Command="{Binding DeleteDuplicatesCommand}"
+                            Width="200" HorizontalAlignment="Left" Margin="0,10,0,0"/>
                 </Grid>
             </TabItem>
 
             <TabItem Header="清理建议">
                 <ScrollViewer>
                     <StackPanel Margin="10">
-                        <Button x:Name="ScanCleanupButton" Content="扫描清理建议" Click="ScanCleanupButton_Click" Width="120" Margin="0,0,0,10"/>
-                        
-                        <ItemsControl x:Name="CleanupSuggestionsItemsControl">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="目标磁盘:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <ComboBox Width="90" Margin="0,0,10,0"
+                                      ItemsSource="{Binding Drives}"
+                                      SelectedItem="{Binding SelectedCleanupDrive}"/>
+                            <Button Content="扫描清理建议" Command="{Binding ScanCleanupCommand}" Width="120"/>
+                        </StackPanel>
+
+                        <ItemsControl x:Name="CleanupSuggestionsItemsControl" ItemsSource="{Binding CleanupSuggestions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="0,0,0,10">
@@ -155,27 +175,36 @@
                                                 <TextBlock Text=" - " Margin="5,0,5,0"/>
                                                 <TextBlock Text="{Binding TotalSizeFormatted}" Foreground="{Binding IsSafeToDelete, Converter={StaticResource BooleanToColorConverter}}"/>
                                                 <TextBlock Text=" (" Margin="5,0,0,0"/>
-                                                <TextBlock Text="{Binding Files.Count}"/>
+                                                <TextBlock Text="{Binding FileCount}"/>
                                                 <TextBlock Text=" 个文件)"/>
                                             </StackPanel>
-                                            <CheckBox x:Name="SelectAllCheckBox" Content="全选" Margin="0,5,0,5" Click="CleanupSelectAll_Click"/>
+
+                                            <Button Content="全选/全不选" Width="110" HorizontalAlignment="Left" Margin="0,5,0,5"
+                                                    IsEnabled="{Binding CanSelectFiles}"
+                                                    Command="{Binding DataContext.ToggleCleanupSelectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"/>
+
                                             <ListView ItemsSource="{Binding Files}" Height="150" Margin="0,5,0,0">
                                                 <ListView.View>
                                                     <GridView>
                                                         <GridViewColumn Header="选择" Width="60">
                                                             <GridViewColumn.CellTemplate>
                                                                 <DataTemplate>
-                                                                    <CheckBox IsChecked="{Binding IsSelected}"/>
+                                                                    <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                                              IsEnabled="{Binding DataContext.CanSelectFiles, RelativeSource={RelativeSource AncestorType=ListView}}"/>
                                                                 </DataTemplate>
                                                             </GridViewColumn.CellTemplate>
                                                         </GridViewColumn>
                                                         <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
-                                                        <GridViewColumn Header="路径" Width="350" DisplayMemberBinding="{Binding FullPath}"/>
+                                                        <GridViewColumn Header="路径" Width="380" DisplayMemberBinding="{Binding FullPath}"/>
                                                         <GridViewColumn Header="大小" Width="100" DisplayMemberBinding="{Binding SizeFormatted}"/>
                                                     </GridView>
                                                 </ListView.View>
                                             </ListView>
-                                            <Button Content="删除选中文件" Click="CleanupDeleteSelected_Click" Tag="{Binding}" Width="120" HorizontalAlignment="Right" Margin="0,10,0,0"/>
+
+                                            <Button Content="{Binding ActionText}" Width="130" HorizontalAlignment="Right" Margin="0,10,0,0"
+                                                    Command="{Binding DataContext.DeleteCleanupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -189,28 +218,35 @@
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                        <Button x:Name="AddFilesButton" Content="添加文件" Click="AddFilesButton_Click" Width="100" Margin="0,0,10,0"/>
-                        <Button x:Name="AddFolderButton" Content="添加文件夹" Click="AddFolderButton_Click" Width="100" Margin="0,0,10,0"/>
-                        <Button x:Name="ClearListButton" Content="清空列表" Click="ClearListButton_Click" Width="100"/>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="添加文件" Command="{Binding AddFilesCommand}" Width="100" Margin="0,0,10,0"/>
+                        <Button Content="添加文件夹" Command="{Binding AddFolderCommand}" Width="100" Margin="0,0,10,0"/>
+                        <Button Content="清空列表" Command="{Binding ClearListCommand}" Width="100"/>
                     </StackPanel>
-                    
-                    <ListView Grid.Row="1" x:Name="FileOperationListView">
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="同名冲突:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="160" ItemsSource="{Binding ConflictOptions}"
+                                  SelectedIndex="{Binding SelectedConflictIndex}"/>
+                    </StackPanel>
+
+                    <ListView Grid.Row="2" x:Name="FileOperationListView" ItemsSource="{Binding FileOperationItems}">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="选择" Width="60">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <CheckBox IsChecked="{Binding IsSelected}"/>
+                                            <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
                                 <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
-                                <GridViewColumn Header="路径" Width="400" DisplayMemberBinding="{Binding FullPath}"/>
+                                <GridViewColumn Header="路径" Width="420" DisplayMemberBinding="{Binding FullPath}"/>
                                 <GridViewColumn Header="大小" Width="120" DisplayMemberBinding="{Binding SizeFormatted}"/>
                                 <GridViewColumn Header="类型" Width="80">
                                     <GridViewColumn.CellTemplate>
@@ -222,22 +258,35 @@
                             </GridView>
                         </ListView.View>
                     </ListView>
-                    
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button x:Name="BatchCopyButton" Content="批量复制" Click="BatchCopyButton_Click" Width="100" Margin="0,0,10,0"/>
-                        <Button x:Name="BatchMoveButton" Content="批量移动" Click="BatchMoveButton_Click" Width="100" Margin="0,0,10,0"/>
-                        <Button x:Name="BatchDeleteButton" Content="批量删除" Click="BatchDeleteButton_Click" Width="100"/>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="批量复制" Command="{Binding BatchCopyCommand}" Width="100" Margin="0,0,10,0"/>
+                        <Button Content="批量移动" Command="{Binding BatchMoveCommand}" Width="100" Margin="0,0,10,0"/>
+                        <Button Content="批量删除" Command="{Binding BatchDeleteCommand}" Width="100"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>
 
-        <StatusBar Grid.Row="2">
+        <StatusBar Grid.Row="1">
             <StatusBarItem>
-                <TextBlock x:Name="StatusTextBlock" Text="就绪"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding StatusText}"/>
+                </StackPanel>
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
-                <ProgressBar x:Name="MainProgressBar" Width="200" Height="18" Visibility="Collapsed"/>
+                <StackPanel Orientation="Horizontal">
+                    <ComboBox Width="150" Margin="0,0,10,0"
+                              ItemsSource="{Binding DeleteModeOptions}"
+                              SelectedIndex="{Binding SelectedDeleteModeIndex}"/>
+                    <Button Content="取消" Width="70" Margin="0,0,8,0"
+                            Command="{Binding CancelCommand}"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                    <ProgressBar Width="200" Height="18"
+                                 Value="{Binding ProgressValue, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
     </Grid>

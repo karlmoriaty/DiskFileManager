@@ -29,7 +29,7 @@ New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 
 Write-Host ""
 Write-Host "[3/5] 执行 dotnet publish..." -ForegroundColor Yellow
-Write-Host "  配置: Self-contained, Single-file, Trimmed" -ForegroundColor Gray
+Write-Host "  配置: Self-contained, Single-file, ReadyToRun" -ForegroundColor Gray
 Write-Host "  平台: win-x64" -ForegroundColor Gray
 
 dotnet publish $ProjectFile `
@@ -38,8 +38,7 @@ dotnet publish $ProjectFile `
     --self-contained true `
     --output $OutputDir `
     /p:PublishSingleFile=true `
-    /p:PublishTrimmed=true `
-    /p:TrimMode=link `
+    /p:IncludeNativeLibrariesForSelfExtract=true `
     /p:DebuggerSupport=false `
     /p:PublishReadyToRun=true
 
@@ -111,7 +110,7 @@ $ReadmeContent = @"
 ## 📦 产品信息
 
 - **程序名称**: 磁盘文件管理器
-- **版本**: 1.0
+- **版本**: 2.0
 - **类型**: 便携版（无需安装 .NET 运行时）
 - **支持系统**: Windows 10/11 x64
 

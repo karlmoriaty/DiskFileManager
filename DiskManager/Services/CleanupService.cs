@@ -2,228 +2,260 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using DiskManager.Models;
 
-namespace DiskManager.Services
+namespace DiskManager.Services;
+
+public class CleanupService
 {
-    public class CleanupService
+    private readonly PathGuard _guard;
+    private readonly IRecycleBinService _recycleBin;
+
+    public CleanupService(PathGuard guard, IRecycleBinService recycleBin)
     {
-        private readonly List<string> _systemProtectedPaths = new()
+        _guard = guard;
+        _recycleBin = recycleBin;
+    }
+
+    public Task<List<CleanupSuggestion>> GetCleanupSuggestionsAsync(
+        string? driveLetter = null,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
+        => Task.Run(() => GetCleanupSuggestions(driveLetter, progress, cancellationToken), cancellationToken);
+
+    public List<CleanupSuggestion> GetCleanupSuggestions(
+        string? driveLetter = null,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var suggestions = new List<CleanupSuggestion>();
+        var throttled = new ThrottledProgress(progress);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        suggestions.AddRange(BuildTempSuggestions(cancellationToken));
+        throttled.Report(20, true);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        suggestions.Add(BuildRecycleBinSuggestion());
+        throttled.Report(40, true);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        suggestions.Add(BuildBrowserCacheSuggestion(cancellationToken));
+        throttled.Report(60, true);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        suggestions.Add(BuildWindowsUpdateSuggestion(cancellationToken));
+        throttled.Report(80, true);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        suggestions.Add(BuildDownloadsSuggestion(cancellationToken));
+        throttled.Report(100, true);
+
+        return suggestions
+            .Where(s => s.HasItems)
+            .OrderByDescending(s => s.TotalSize)
+            .ToList();
+    }
+
+    private IEnumerable<CleanupSuggestion> BuildTempSuggestions(CancellationToken cancellationToken)
+    {
+        var userTemp = new CleanupSuggestion
         {
-            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-            Environment.GetFolderPath(Environment.SpecialFolder.System)
+            Kind = CleanupKind.TempFiles,
+            Category = "用户临时文件",
+            Description = "当前用户产生的临时文件，可以安全删除",
+            IsSafeToDelete = true
+        };
+        AddDirectoryFiles(Path.GetTempPath(), userTemp, true, cancellationToken);
+        yield return userTemp;
+
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(windows))
+        {
+            yield break;
+        }
+
+        var windowsTemp = new CleanupSuggestion
+        {
+            Kind = CleanupKind.TempFiles,
+            Category = "Windows 临时文件",
+            Description = "系统临时文件，部分文件可能被占用，需要管理员权限",
+            IsSafeToDelete = true
+        };
+        AddDirectoryFiles(Path.Combine(windows, "Temp"), windowsTemp, true, cancellationToken);
+        yield return windowsTemp;
+    }
+
+    private CleanupSuggestion BuildRecycleBinSuggestion()
+    {
+        var info = _recycleBin.Query();
+        return new CleanupSuggestion
+        {
+            Kind = CleanupKind.RecycleBin,
+            Category = "回收站",
+            Description = "回收站中的文件，清空后无法恢复",
+            IsSafeToDelete = true,
+            TotalSize = info.Size,
+            ItemCount = info.ItemCount
+        };
+    }
+
+    private CleanupSuggestion BuildBrowserCacheSuggestion(CancellationToken cancellationToken)
+    {
+        var suggestion = new CleanupSuggestion
+        {
+            Kind = CleanupKind.BrowserCache,
+            Category = "浏览器缓存",
+            Description = "浏览器缓存目录，不含书签、密码和登录状态",
+            IsSafeToDelete = true
         };
 
-        public List<CleanupSuggestion> GetCleanupSuggestions(string driveLetter)
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
         {
-            var suggestions = new List<CleanupSuggestion>();
-
-            suggestions.Add(GetTempFilesSuggestion());
-            suggestions.Add(GetRecycleBinSuggestion());
-            suggestions.Add(GetBrowserCacheSuggestion());
-            suggestions.Add(GetWindowsUpdateCleanupSuggestion());
-            suggestions.Add(GetDownloadsSuggestion());
-
-            return suggestions.Where(s => s.Files.Count > 0).OrderByDescending(s => s.TotalSize).ToList();
+            return suggestion;
         }
 
-        private CleanupSuggestion GetTempFilesSuggestion()
+        var profileRoots = new[]
         {
-            var suggestion = new CleanupSuggestion
-            {
-                Category = "临时文件",
-                Description = "系统和应用程序产生的临时文件，可以安全删除",
-                IsSafeToDelete = true
-            };
+            Path.Combine(localAppData, "Google", "Chrome", "User Data"),
+            Path.Combine(localAppData, "Microsoft", "Edge", "User Data")
+        };
 
-            var tempPaths = new List<string>
+        foreach (var root in profileRoots)
+        {
+            foreach (var profile in SafeEnumerateDirectories(root))
             {
-                Path.GetTempPath(),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp")
-            };
-
-            foreach (var tempPath in tempPaths)
-            {
-                if (Directory.Exists(tempPath))
+                foreach (var cache in new[] { "Cache", "Code Cache", "GPUCache", "DawnCache" })
                 {
-                    AddFilesFromDirectory(tempPath, suggestion, "*.*", true);
+                    AddDirectoryFiles(Path.Combine(profile, cache), suggestion, true, cancellationToken);
                 }
             }
+        }
 
+        var firefoxProfiles = Path.Combine(localAppData, "Mozilla", "Firefox", "Profiles");
+        foreach (var profile in SafeEnumerateDirectories(firefoxProfiles))
+        {
+            foreach (var cache in new[] { "cache2", "startupCache", "shader-cache", "thumbnails" })
+            {
+                AddDirectoryFiles(Path.Combine(profile, cache), suggestion, true, cancellationToken);
+            }
+        }
+
+        var inetCache = Path.Combine(localAppData, "Microsoft", "Windows", "INetCache");
+        AddDirectoryFiles(inetCache, suggestion, true, cancellationToken);
+
+        return suggestion;
+    }
+
+    private CleanupSuggestion BuildWindowsUpdateSuggestion(CancellationToken cancellationToken)
+    {
+        var suggestion = new CleanupSuggestion
+        {
+            Kind = CleanupKind.WindowsUpdate,
+            Category = "Windows 更新缓存",
+            Description = "更新下载缓存；部分文件被服务占用，建议先停止 Windows Update 服务并提升权限",
+            IsSafeToDelete = false
+        };
+
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (string.IsNullOrWhiteSpace(windows))
+        {
             return suggestion;
         }
 
-        private CleanupSuggestion GetRecycleBinSuggestion()
-        {
-            var suggestion = new CleanupSuggestion
-            {
-                Category = "回收站",
-                Description = "回收站中的文件，删除后无法恢复",
-                IsSafeToDelete = true
-            };
+        AddDirectoryFiles(Path.Combine(windows, "SoftwareDistribution", "Download"), suggestion, true, cancellationToken);
+        return suggestion;
+    }
 
-            try
+    private CleanupSuggestion BuildDownloadsSuggestion(CancellationToken cancellationToken)
+    {
+        var suggestion = new CleanupSuggestion
+        {
+            Kind = CleanupKind.Downloads,
+            Category = "下载文件夹",
+            Description = "下载文件夹中的文件，请谨慎选择删除",
+            IsSafeToDelete = false
+        };
+
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(profile))
+        {
+            AddDirectoryFiles(Path.Combine(profile, "Downloads"), suggestion, false, cancellationToken);
+        }
+
+        return suggestion;
+    }
+
+    private void AddDirectoryFiles(
+        string path,
+        CleanupSuggestion suggestion,
+        bool recursive,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            return;
+        }
+
+        var before = suggestion.Files.Count;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(path, "*", ScanOptions.Create(recursive)))
             {
-                var recyclePath = @"C:\$Recycle.Bin";
-                if (Directory.Exists(recyclePath))
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_guard.IsProtected(file))
                 {
-                    AddFilesFromDirectory(recyclePath, suggestion, "*.*", true);
+                    continue;
                 }
-            }
-            catch (Exception) { }
 
-            return suggestion;
-        }
-
-        private CleanupSuggestion GetBrowserCacheSuggestion()
-        {
-            var suggestion = new CleanupSuggestion
-            {
-                Category = "浏览器缓存",
-                Description = "浏览器缓存文件，可以安全删除",
-                IsSafeToDelete = true
-            };
-
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-            var browserCachePaths = new List<string>
-            {
-                Path.Combine(localAppData, @"Google\Chrome\User Data\Default\Cache"),
-                Path.Combine(localAppData, @"Google\Chrome\User Data\Default\Code Cache"),
-                Path.Combine(localAppData, @"Microsoft\Edge\User Data\Default\Cache"),
-                Path.Combine(localAppData, @"Mozilla\Firefox\Profiles")
-            };
-
-            foreach (var cachePath in browserCachePaths)
-            {
-                if (Directory.Exists(cachePath))
+                try
                 {
-                    AddFilesFromDirectory(cachePath, suggestion, "*.*", true);
-                }
-            }
-
-            return suggestion;
-        }
-
-        private CleanupSuggestion GetWindowsUpdateCleanupSuggestion()
-        {
-            var suggestion = new CleanupSuggestion
-            {
-                Category = "Windows更新缓存",
-                Description = "Windows更新下载的旧文件，可以安全删除",
-                IsSafeToDelete = true
-            };
-
-            var winSxS = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "WinSxS");
-            var softwareDistribution = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"SoftwareDistribution\Download");
-
-            if (Directory.Exists(softwareDistribution))
-            {
-                AddFilesFromDirectory(softwareDistribution, suggestion, "*.*", true);
-            }
-
-            return suggestion;
-        }
-
-        private CleanupSuggestion GetDownloadsSuggestion()
-        {
-            var suggestion = new CleanupSuggestion
-            {
-                Category = "下载文件夹",
-                Description = "下载文件夹中的文件，请谨慎选择删除",
-                IsSafeToDelete = false
-            };
-
-            var downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            downloadsPath = Path.Combine(downloadsPath, "Downloads");
-
-            if (Directory.Exists(downloadsPath))
-            {
-                AddFilesFromDirectory(downloadsPath, suggestion, "*.*", false);
-            }
-
-            return suggestion;
-        }
-
-        private void AddFilesFromDirectory(string path, CleanupSuggestion suggestion, string searchPattern, bool recursive)
-        {
-            try
-            {
-                var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-                var files = Directory.GetFiles(path, searchPattern, searchOption);
-
-                foreach (var file in files)
-                {
-                    try
+                    var info = new FileInfo(file);
+                    suggestion.Files.Add(new FileItem
                     {
-                        if (!IsSystemProtectedPath(file))
-                        {
-                            var fileInfo = new FileInfo(file);
-                            suggestion.Files.Add(new FileItem
-                            {
-                                FullPath = file,
-                                Size = fileInfo.Length,
-                                LastModified = fileInfo.LastWriteTime,
-                                IsDirectory = false
-                            });
-                            suggestion.TotalSize += fileInfo.Length;
-                        }
-                    }
-                    catch (UnauthorizedAccessException) { }
-                    catch (IOException) { }
+                        FullPath = file,
+                        Size = info.Length,
+                        LastModified = info.LastWriteTime,
+                        IsDirectory = false
+                    });
+                    suggestion.TotalSize += info.Length;
                 }
-            }
-            catch (UnauthorizedAccessException) { }
-            catch (IOException) { }
-        }
-
-        public bool IsSystemProtectedPath(string path)
-        {
-            var fullPath = Path.GetFullPath(path);
-            return _systemProtectedPaths.Any(p => fullPath.StartsWith(p, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public bool DeleteFile(string filePath, bool confirm = true)
-        {
-            if (IsSystemProtectedPath(filePath))
-            {
-                return false;
-            }
-
-            try
-            {
-                if (File.Exists(filePath))
+                catch (Exception)
                 {
-                    File.Delete(filePath);
-                    return true;
                 }
-                return false;
-            }
-            catch (Exception)
-            {
-                return false;
             }
         }
-
-        public bool DeleteFiles(List<string> filePaths, IProgress<int>? progress = null)
+        catch (OperationCanceledException)
         {
-            var success = true;
-            var processed = 0;
+            throw;
+        }
+        catch (Exception)
+        {
+        }
 
-            foreach (var filePath in filePaths)
-            {
-                if (!DeleteFile(filePath, false))
-                {
-                    success = false;
-                }
-                processed++;
-                progress?.Report((int)((double)processed / filePaths.Count * 100));
-            }
+        if (suggestion.Files.Count != before)
+        {
+            suggestion.NotifyFilesChanged();
+        }
+    }
 
-            return success;
+    private static IEnumerable<string> SafeEnumerateDirectories(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            return Directory.EnumerateDirectories(path, "*", ScanOptions.Create()).ToList();
+        }
+        catch (Exception)
+        {
+            return Array.Empty<string>();
         }
     }
 }
