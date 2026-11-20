@@ -25,6 +25,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly bool _ownsMonitor;
 
     private CancellationTokenSource? _cts;
+    private Task? _activeTask;
     private bool _isBusy;
     private bool _isProgressIndeterminate;
     private double _progressValue;
@@ -312,8 +313,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await RunBusyAsync("正在删除文件...", async token =>
         {
+            var progress = new Progress<int>(value =>
+            {
+                ProgressValue = value;
+                StatusText = $"正在删除文件... {value}%";
+            });
+
             var result = await _files.DeleteAsync(
-                selected.Select(file => file.FullPath).ToList(), EffectiveDeleteMode, null, token);
+                selected.Select(file => file.FullPath).ToList(), EffectiveDeleteMode, progress, token);
 
             foreach (var item in selected.ToList())
             {
@@ -364,7 +371,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
 
             var wasted = groups.Sum(group => group.TotalWastedSpace);
-            StatusText = $"扫描完成，找到 {groups.Count} 组重复文件，可节省 {Utils.SizeFormatter.Format(wasted)}";
+            var skipped = _duplicates.LastSkippedCloudFileCount;
+            var suffix = skipped > 0 ? $"，跳过 {skipped} 个云端占位文件" : string.Empty;
+            StatusText = $"扫描完成，找到 {groups.Count} 组重复文件，可节省 {Utils.SizeFormatter.Format(wasted)}{suffix}";
             _log.Log("扫描重复文件",
                 $"在 {DuplicateScanPath} 找到 {groups.Count} 组重复文件，可节省 {Utils.SizeFormatter.Format(wasted)}", true);
         });
@@ -399,8 +408,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await RunBusyAsync("正在删除重复文件...", async token =>
         {
+            var progress = new Progress<int>(value =>
+            {
+                ProgressValue = value;
+                StatusText = $"正在删除重复文件... {value}%";
+            });
+
             var result = await _files.DeleteAsync(
-                targets.Select(file => file.FullPath).ToList(), EffectiveDeleteMode, null, token);
+                targets.Select(file => file.FullPath).ToList(), EffectiveDeleteMode, progress, token);
 
             foreach (var group in DuplicateGroups.ToList())
             {
@@ -483,8 +498,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     StatusText = "清空回收站失败";
                     _dialogs.Error("清空回收站失败，请确认权限。");
                 }
-
-            });
+            }, indeterminate: true);
             return;
         }
 
@@ -504,8 +518,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await RunBusyAsync("正在删除文件...", async token =>
         {
+            var progress = new Progress<int>(value =>
+            {
+                ProgressValue = value;
+                StatusText = $"正在删除文件... {value}%";
+            });
+
             var result = await _files.DeleteAsync(
-                selected.Select(file => file.FullPath).ToList(), EffectiveDeleteMode, null, token);
+                selected.Select(file => file.FullPath).ToList(), EffectiveDeleteMode, progress, token);
 
             foreach (var file in selected.ToList())
             {
@@ -705,6 +725,26 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void Cancel() => _cts?.Cancel();
 
+    public async Task CancelAndWaitAsync(TimeSpan timeout)
+    {
+        var active = Interlocked.Exchange(ref _cts, null);
+        active?.Cancel();
+
+        var task = _activeTask;
+        if (task != null)
+        {
+            try
+            {
+                await Task.WhenAny(task, Task.Delay(timeout));
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        active?.Dispose();
+    }
+
     private async Task RunBusyAsync(string status, Func<CancellationToken, Task> work, bool indeterminate = false)
     {
         if (IsBusy)
@@ -722,7 +762,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         try
         {
-            await work(active.Token);
+            var workTask = work(active.Token);
+            _activeTask = workTask;
+            await workTask;
         }
         catch (OperationCanceledException)
         {
@@ -739,6 +781,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             IsBusy = false;
             IsProgressIndeterminate = false;
             ProgressValue = 0;
+            _activeTask = null;
             Interlocked.CompareExchange(ref _cts, null, active);
             active.Dispose();
         }

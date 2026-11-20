@@ -55,6 +55,22 @@ public class DuplicateFileServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task FindDuplicatesAsync_SkipsOfflineCloudFiles()
+    {
+        var first = Path.Combine(_root, "cloud-a.txt");
+        var second = Path.Combine(_root, "cloud-b.txt");
+        File.WriteAllText(first, "same-content");
+        File.WriteAllText(second, "same-content");
+        File.SetAttributes(second, FileAttributes.Offline);
+
+        var service = new DuplicateFileService();
+        var groups = await service.FindDuplicatesAsync(_root);
+
+        Assert.Empty(groups);
+        Assert.Equal(1, service.LastSkippedCloudFileCount);
+    }
+
+    [Fact]
     public void SelectKeep_HonoursNewestAndOldest()
     {
         var older = new FileItem { FullPath = @"C:\a\older.txt", LastModified = new DateTime(2020, 1, 1) };

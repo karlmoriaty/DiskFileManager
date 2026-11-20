@@ -72,15 +72,7 @@ public sealed class FileOperationService
                 return _recycleBin.Recycle(path, isDirectory);
             }
 
-            if (isDirectory)
-            {
-                Directory.Delete(path, true);
-            }
-            else
-            {
-                File.Delete(path);
-            }
-
+            DeletePermanent(path, isDirectory);
             return true;
         }
         catch (Exception ex)
@@ -135,9 +127,9 @@ public sealed class FileOperationService
                 continue;
             }
 
-            if (Directory.Exists(source) && PathGuard.IsStrictlyInside(destinationFolder, source))
+            if (Directory.Exists(source) && PathGuard.IsSameOrInside(destinationFolder, source))
             {
-                result.MarkFailed($"目标目录位于源目录内部，已跳过: {source}");
+                result.MarkFailed($"目标目录与源目录相同或位于其内部，已跳过: {source}");
                 continue;
             }
 
@@ -236,14 +228,77 @@ public sealed class FileOperationService
     {
         if (isDirectory)
         {
-            Directory.Delete(path, true);
+            try
+            {
+                Directory.Delete(path, true);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ClearReadOnlyRecursive(path);
+                Directory.Delete(path, true);
+            }
         }
         else
         {
-            File.Delete(path);
+            try
+            {
+                File.Delete(path);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ClearReadOnly(path);
+                File.Delete(path);
+            }
         }
 
         return true;
+    }
+
+    private static void ClearReadOnly(string path)
+    {
+        var attributes = File.GetAttributes(path);
+        if ((attributes & FileAttributes.ReadOnly) != 0)
+        {
+            File.SetAttributes(path, attributes & ~FileAttributes.ReadOnly);
+        }
+    }
+
+    private static void ClearReadOnlyRecursive(string path)
+    {
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(path, "*", ScanOptions.Create()))
+            {
+                try
+                {
+                    ClearReadOnly(file);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            foreach (var directory in Directory.EnumerateDirectories(path, "*", ScanOptions.Create()))
+            {
+                if (FileWalker.IsReparsePoint(directory))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    ClearReadOnlyRecursive(directory);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            ClearReadOnly(path);
+        }
+        catch (Exception)
+        {
+        }
     }
 
     private Outcome CopyPath(
