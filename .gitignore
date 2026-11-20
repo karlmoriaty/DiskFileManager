@@ -10,4 +10,5 @@ obj/
 .cache/
 *.cache
 DiskManager_Portable/
+TestResults/
 .trae/

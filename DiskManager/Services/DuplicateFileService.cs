@@ -3,110 +3,189 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using DiskManager.Models;
 
-namespace DiskManager.Services
+namespace DiskManager.Services;
+
+public class DuplicateFileService
 {
-    public class DuplicateFileService
+    private const int SampleBytes = 4096;
+
+    private readonly record struct FileEntry(string Path, long Size, DateTime LastModified);
+
+    public Task<List<DuplicateFileGroup>> FindDuplicatesAsync(
+        string path,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
+        => Task.Run(() => FindDuplicates(path, progress, cancellationToken), cancellationToken);
+
+    public List<DuplicateFileGroup> FindDuplicates(
+        string path,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
     {
-        public event EventHandler<ProgressEventArgs>? ProgressChanged;
+        var throttled = new ThrottledProgress(progress);
+        var entries = new List<FileEntry>();
 
-        public async Task<List<DuplicateFileGroup>> FindDuplicatesAsync(string path, IProgress<int>? progress = null)
+        FileWalker.WalkFiles(path, cancellationToken, file =>
         {
-            return await Task.Run(() =>
-            {
-                var duplicates = new Dictionary<string, DuplicateFileGroup>();
-                var filesBySize = new Dictionary<long, List<string>>();
-
-                var allFiles = GetAllFiles(path);
-                var totalFiles = allFiles.Count;
-                var processedFiles = 0;
-
-                foreach (var file in allFiles)
-                {
-                    try
-                    {
-                        var fileInfo = new FileInfo(file);
-                        if (!filesBySize.ContainsKey(fileInfo.Length))
-                        {
-                            filesBySize[fileInfo.Length] = new List<string>();
-                        }
-                        filesBySize[fileInfo.Length].Add(file);
-                    }
-                    catch (Exception) { }
-
-                    processedFiles++;
-                    progress?.Report((int)((double)processedFiles / totalFiles * 25));
-                }
-
-                var sizeGroupsWithMultipleFiles = filesBySize.Where(kv => kv.Value.Count > 1).ToList();
-                processedFiles = 0;
-
-                foreach (var sizeGroup in sizeGroupsWithMultipleFiles)
-                {
-                    foreach (var file in sizeGroup.Value)
-                    {
-                        try
-                        {
-                            var hash = ComputeFileHash(file);
-                            if (!duplicates.ContainsKey(hash))
-                            {
-                                duplicates[hash] = new DuplicateFileGroup
-                                {
-                                    FileHash = hash,
-                                    FileSize = sizeGroup.Key
-                                };
-                            }
-
-                            var fileInfo = new FileInfo(file);
-                            duplicates[hash].Files.Add(new FileItem
-                            {
-                                FullPath = file,
-                                Size = fileInfo.Length,
-                                LastModified = fileInfo.LastWriteTime,
-                                IsDirectory = false
-                            });
-                        }
-                        catch (Exception) { }
-                    }
-
-                    processedFiles++;
-                    progress?.Report(25 + (int)((double)processedFiles / sizeGroupsWithMultipleFiles.Count * 75));
-                }
-
-                return duplicates.Values.Where(g => g.Files.Count > 1).OrderByDescending(g => g.TotalWastedSpace).ToList();
-            });
-        }
-
-        private List<string> GetAllFiles(string path)
-        {
-            var files = new List<string>();
             try
             {
-                files.AddRange(Directory.GetFiles(path));
-                foreach (var dir in Directory.GetDirectories(path))
+                var info = new FileInfo(file);
+                if (info.Length > 0)
                 {
-                    try
-                    {
-                        files.AddRange(GetAllFiles(dir));
-                    }
-                    catch (UnauthorizedAccessException) { }
-                    catch (IOException) { }
+                    entries.Add(new FileEntry(file, info.Length, info.LastWriteTime));
                 }
             }
-            catch (UnauthorizedAccessException) { }
-            catch (IOException) { }
-            return files;
+            catch (Exception)
+            {
+            }
+        });
+
+        throttled.Report(10, true);
+
+        var sizeGroups = entries
+            .GroupBy(entry => entry.Size)
+            .Where(group => group.Count() > 1)
+            .ToList();
+
+        var candidates = new List<(long Size, List<FileEntry> Files)>();
+        var processed = 0;
+        foreach (var group in sizeGroups)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var sampleGroup in group.GroupBy(entry => ComputeSampleHash(entry.Path)).Where(g => g.Count() > 1))
+            {
+                candidates.Add((group.Key, sampleGroup.ToList()));
+            }
+
+            processed++;
+            throttled.Report(10 + (int)((double)processed / Math.Max(1, sizeGroups.Count) * 30));
         }
 
-        private string ComputeFileHash(string filePath)
+        var results = new List<DuplicateFileGroup>();
+        processed = 0;
+        foreach (var candidate in candidates)
         {
-            using var md5 = MD5.Create();
-            using var stream = File.OpenRead(filePath);
-            var hash = md5.ComputeHash(stream);
-            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var hashGroup in candidate.Files.GroupBy(entry => ComputeFullHash(entry.Path)))
+            {
+                var files = hashGroup.ToList();
+                if (files.Count < 2)
+                {
+                    continue;
+                }
+
+                var group = new DuplicateFileGroup
+                {
+                    FileHash = hashGroup.Key,
+                    FileSize = candidate.Size
+                };
+
+                foreach (var entry in files)
+                {
+                    group.Files.Add(new FileItem
+                    {
+                        FullPath = entry.Path,
+                        Size = entry.Size,
+                        LastModified = entry.LastModified,
+                        IsDirectory = false
+                    });
+                }
+
+                results.Add(group);
+            }
+
+            processed++;
+            throttled.Report(40 + (int)((double)processed / Math.Max(1, candidates.Count) * 60));
+        }
+
+        throttled.Report(100, true);
+        return results.OrderByDescending(group => group.TotalWastedSpace).ToList();
+    }
+
+    public static FileItem? SelectKeep(IEnumerable<FileItem> files, DuplicateKeepStrategy strategy)
+    {
+        var list = files.ToList();
+        if (list.Count == 0)
+        {
+            return null;
+        }
+
+        return strategy switch
+        {
+            DuplicateKeepStrategy.Newest => list
+                .OrderByDescending(file => file.LastModified)
+                .ThenBy(file => file.FullPath.Length)
+                .First(),
+            DuplicateKeepStrategy.Oldest => list
+                .OrderBy(file => file.LastModified)
+                .ThenBy(file => file.FullPath.Length)
+                .First(),
+            _ => list
+                .OrderBy(file => file.FullPath.Length)
+                .ThenBy(file => file.FullPath, StringComparer.OrdinalIgnoreCase)
+                .First()
+        };
+    }
+
+    public static List<FileItem> SelectToDelete(IEnumerable<FileItem> files, DuplicateKeepStrategy strategy)
+    {
+        var list = files.ToList();
+        var keep = SelectKeep(list, strategy);
+        if (keep == null)
+        {
+            return new List<FileItem>();
+        }
+
+        return list.Where(file => !ReferenceEquals(file, keep) && !file.FullPath.Equals(keep.FullPath, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private static string ComputeSampleHash(string path)
+    {
+        try
+        {
+            using var sha = SHA256.Create();
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
+            var buffer = new byte[SampleBytes];
+            var read = stream.Read(buffer, 0, buffer.Length);
+            if (read > 0)
+            {
+                sha.TransformBlock(buffer, 0, read, null, 0);
+            }
+
+            if (stream.Length > SampleBytes * 2)
+            {
+                stream.Seek(-SampleBytes, SeekOrigin.End);
+                read = stream.Read(buffer, 0, buffer.Length);
+                if (read > 0)
+                {
+                    sha.TransformBlock(buffer, 0, read, null, 0);
+                }
+            }
+
+            sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            return Convert.ToHexString(sha.Hash!).ToLowerInvariant();
+        }
+        catch (Exception)
+        {
+            return "sample-error-" + Guid.NewGuid().ToString("N");
+        }
+    }
+
+    private static string ComputeFullHash(string path)
+    {
+        try
+        {
+            using var sha = SHA256.Create();
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
+            return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
+        }
+        catch (Exception)
+        {
+            return "full-error-" + Guid.NewGuid().ToString("N");
         }
     }
 }

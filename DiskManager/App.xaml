@@ -1,11 +1,11 @@
 <Application x:Class="DiskManager.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:DiskManager"
              xmlns:utils="clr-namespace:DiskManager.Utils">
     <Application.Resources>
         <utils:BooleanToStatusConverter x:Key="BooleanToStatusConverter"/>
         <utils:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
         <utils:BooleanToTypeConverter x:Key="BooleanToTypeConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     </Application.Resources>
 </Application>

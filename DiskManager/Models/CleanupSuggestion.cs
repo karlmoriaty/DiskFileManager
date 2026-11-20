@@ -1,28 +1,54 @@
-using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using DiskManager.Utils;
 
-namespace DiskManager.Models
+namespace DiskManager.Models;
+
+public class CleanupSuggestion : ObservableObject
 {
-    public class CleanupSuggestion
-    {
-        public string Category { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public List<FileItem> Files { get; set; } = new List<FileItem>();
-        public long TotalSize { get; set; }
-        public bool IsSafeToDelete { get; set; }
-        public string TotalSizeFormatted => FormatSize(TotalSize);
+    private long _totalSize;
+    private int _itemCount;
 
-        private static string FormatSize(long bytes)
+    public CleanupKind Kind { get; init; }
+    public string Category { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public bool IsSafeToDelete { get; init; }
+    public ObservableCollection<FileItem> Files { get; } = new();
+
+    public long TotalSize
+    {
+        get => _totalSize;
+        set
         {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            int order = 0;
-            double size = bytes;
-            while (size >= 1024 && order < sizes.Length - 1)
+            if (SetProperty(ref _totalSize, value))
             {
-                order++;
-                size /= 1024;
+                OnPropertyChanged(nameof(TotalSizeFormatted));
             }
-            return $"{size:0.##} {sizes[order]}";
         }
+    }
+
+    public int ItemCount
+    {
+        get => _itemCount;
+        set
+        {
+            if (SetProperty(ref _itemCount, value))
+            {
+                OnPropertyChanged(nameof(FileCount));
+                OnPropertyChanged(nameof(HasItems));
+            }
+        }
+    }
+
+    public int FileCount => Kind == CleanupKind.RecycleBin ? ItemCount : Files.Count;
+    public bool HasItems => ItemCount > 0 || Files.Count > 0;
+    public bool CanSelectFiles => Kind != CleanupKind.RecycleBin;
+    public string TotalSizeFormatted => SizeFormatter.Format(TotalSize);
+    public string ActionText => Kind == CleanupKind.RecycleBin ? "清空回收站" : "删除选中文件";
+
+    public void NotifyFilesChanged()
+    {
+        OnPropertyChanged(nameof(FileCount));
+        OnPropertyChanged(nameof(HasItems));
+        OnPropertyChanged(nameof(TotalSizeFormatted));
     }
 }
