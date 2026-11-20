@@ -128,7 +128,9 @@
                         <Button Content="扫描重复文件" Command="{Binding ScanDuplicatesCommand}" Width="120"/>
                     </StackPanel>
 
-                    <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" ItemsSource="{Binding DuplicateGroups}">
+                    <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" ItemsSource="{Binding DuplicateGroups}"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              VirtualizingStackPanel.VirtualizationMode="Recycling">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Files}">
                                 <StackPanel Orientation="Horizontal">

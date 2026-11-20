@@ -21,6 +21,8 @@ public class DuplicateFileService
         CancellationToken cancellationToken = default)
         => Task.Run(() => FindDuplicates(path, progress, cancellationToken), cancellationToken);
 
+    public int LastSkippedCloudFileCount { get; private set; }
+
     public List<DuplicateFileGroup> FindDuplicates(
         string path,
         IProgress<int>? progress = null,
@@ -28,16 +30,25 @@ public class DuplicateFileService
     {
         var throttled = new ThrottledProgress(progress);
         var entries = new List<FileEntry>();
+        LastSkippedCloudFileCount = 0;
 
         FileWalker.WalkFiles(path, cancellationToken, file =>
         {
             try
             {
                 var info = new FileInfo(file);
-                if (info.Length > 0)
+                if (info.Length == 0)
                 {
-                    entries.Add(new FileEntry(file, info.Length, info.LastWriteTime));
+                    return;
                 }
+
+                if ((info.Attributes & FileAttributes.Offline) != 0)
+                {
+                    LastSkippedCloudFileCount++;
+                    return;
+                }
+
+                entries.Add(new FileEntry(file, info.Length, info.LastWriteTime));
             }
             catch (Exception)
             {

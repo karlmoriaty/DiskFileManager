@@ -14,6 +14,7 @@ public sealed class RecycleBinService : IRecycleBinService
     private const ushort FofNoConfirmation = 0x0010;
     private const ushort FofAllowUndo = 0x0040;
     private const ushort FofNoErrorUi = 0x0400;
+    private const ushort FofWantNukeWarning = 0x4000;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct ShFileOperation
@@ -62,7 +63,7 @@ public sealed class RecycleBinService : IRecycleBinService
         {
             Func = FoDelete,
             From = path + "\0",
-            Flags = FofAllowUndo | FofNoConfirmation | FofSilent | FofNoErrorUi
+            Flags = FofAllowUndo | FofNoConfirmation | FofSilent | FofNoErrorUi | FofWantNukeWarning
         };
 
         var result = SHFileOperation(ref operation);

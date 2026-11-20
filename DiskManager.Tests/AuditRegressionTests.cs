@@ -102,4 +102,60 @@ public class AuditRegressionTests : IDisposable
         Assert.Equal("C:", new FileItem { FullPath = @"C:\" }.Name);
         Assert.Equal("a.txt", new FileItem { FullPath = @"C:\temp\a.txt" }.Name);
     }
+
+    [Fact]
+    public async Task CopyAsync_RejectsCopyingDirectoryIntoItself()
+    {
+        var source = Path.Combine(_root, "self");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "a.txt"), "a");
+
+        var result = await Create().CopyAsync(new[] { source }, source);
+
+        Assert.False(result.AllSucceeded);
+        Assert.True(File.Exists(Path.Combine(source, "a.txt")));
+        Assert.False(Directory.Exists(Path.Combine(source, "self")));
+    }
+
+    [Fact]
+    public async Task MoveAsync_RejectsMovingDirectoryIntoItself()
+    {
+        var source = Path.Combine(_root, "self");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "a.txt"), "a");
+
+        var result = await Create().MoveAsync(new[] { source }, source);
+
+        Assert.False(result.AllSucceeded);
+        Assert.True(File.Exists(Path.Combine(source, "a.txt")));
+        Assert.False(Directory.Exists(Path.Combine(source, "self")));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_PermanentHandlesReadOnlyFile()
+    {
+        var file = Path.Combine(_root, "readonly.txt");
+        await File.WriteAllTextAsync(file, "x");
+        File.SetAttributes(file, FileAttributes.ReadOnly);
+
+        var result = await Create().DeleteAsync(new[] { file }, DeleteMode.Permanent);
+
+        Assert.True(result.AllSucceeded);
+        Assert.False(File.Exists(file));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_PermanentHandlesReadOnlyTree()
+    {
+        var directory = Path.Combine(_root, "readonly-tree");
+        Directory.CreateDirectory(Path.Combine(directory, "nested"));
+        var file = Path.Combine(directory, "nested", "a.txt");
+        await File.WriteAllTextAsync(file, "x");
+        File.SetAttributes(file, FileAttributes.ReadOnly);
+
+        var result = await Create().DeleteAsync(new[] { directory }, DeleteMode.Permanent);
+
+        Assert.True(result.AllSucceeded);
+        Assert.False(Directory.Exists(directory));
+    }
 }

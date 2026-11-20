@@ -95,4 +95,14 @@ public class MainViewModelTests : IDisposable
 
         Assert.Single(dialogs.Infos);
     }
+
+    [Fact]
+    public async Task CancelAndWaitAsync_CompletesWhenIdle()
+    {
+        using var viewModel = CreateViewModel();
+
+        await viewModel.CancelAndWaitAsync(TimeSpan.FromMilliseconds(200));
+
+        Assert.False(viewModel.IsBusy);
+    }
 }
