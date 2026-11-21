@@ -11,29 +11,32 @@
         <utils:IndexToVisibilityConverter x:Key="IndexToVisibility"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
 
-        <SolidColorBrush x:Key="Brush.Primary" Color="#0DBD8B"/>
-        <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#E6F7F2"/>
-        <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626"/>
-        <SolidColorBrush x:Key="Brush.DangerSoft" Color="#FDECEA"/>
-        <SolidColorBrush x:Key="Brush.Success" Color="#0DBD8B"/>
-        <SolidColorBrush x:Key="Brush.Warning" Color="#D97706"/>
+                <!-- PALETTE:START -->
+        <SolidColorBrush x:Key="Brush.Primary" Color="#1F1E1D"/>
+        <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#EFEDE6"/>
+        <SolidColorBrush x:Key="Brush.Danger" Color="#8C3A35"/>
+        <SolidColorBrush x:Key="Brush.DangerSoft" Color="#F2E9E8"/>
+        <SolidColorBrush x:Key="Brush.Success" Color="#5F7A61"/>
+        <SolidColorBrush x:Key="Brush.Warning" Color="#8A6A3A"/>
         <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="Brush.AppBackground" Color="#F3F4F6"/>
-        <SolidColorBrush x:Key="Brush.Border" Color="#E5E7EB"/>
-        <SolidColorBrush x:Key="Brush.Hover" Color="#F3F4F6"/>
-        <SolidColorBrush x:Key="Brush.Selected" Color="#F3F4F6"/>
-        <SolidColorBrush x:Key="Brush.TextPrimary" Color="#111827"/>
-        <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6B7280"/>
+        <SolidColorBrush x:Key="Brush.AppBackground" Color="#FAF9F5"/>
+        <SolidColorBrush x:Key="Brush.Sidebar" Color="#F0EEE6"/>
+        <SolidColorBrush x:Key="Brush.Border" Color="#E8E5DD"/>
+        <SolidColorBrush x:Key="Brush.Hover" Color="#F0EEE6"/>
+        <SolidColorBrush x:Key="Brush.Selected" Color="#EFEDE6"/>
+        <SolidColorBrush x:Key="Brush.TextPrimary" Color="#1F1E1D"/>
+        <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6B6B6B"/>
+        <!-- PALETTE:END -->
 
         <Style x:Key="PageTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontSize" Value="20"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
         </Style>
 
         <Style x:Key="SectionTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
             <Setter Property="Margin" Value="4,0,0,8"/>
@@ -47,24 +50,24 @@
 
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="16"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
 
         <Style x:Key="ListCard" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="Margin" Value="0"/>
         </Style>
 
         <Style TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -77,7 +80,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6"
+                                CornerRadius="8"
                                 SnapsToDevicePixels="True">
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -100,7 +103,9 @@
         </Style>
 
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource Brush.PrimarySoft}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Primary}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.Primary}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
@@ -115,23 +120,22 @@
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="{StaticResource Brush.AppBackground}"/>
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
             <Setter Property="Padding" Value="9,5"/>
-            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Style.Triggers>
                 <Trigger Property="IsKeyboardFocusWithin" Value="True">
                     <Setter Property="BorderBrush" Value="{StaticResource Brush.Primary}"/>
-                    <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
@@ -170,8 +174,8 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Grid>
-                            <Border x:Name="Bg" Background="Transparent" CornerRadius="6"/>
-                            <Border x:Name="Indicator" Width="3" Margin="0,9"
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="8"/>
+                            <Border x:Name="Indicator" Width="3" Margin="0,10"
                                     HorizontalAlignment="Left" CornerRadius="1.5"
                                     Background="{StaticResource Brush.Primary}" Visibility="Collapsed"/>
                             <ContentPresenter Margin="{TemplateBinding Padding}"/>
@@ -184,7 +188,7 @@
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.AppBackground}"/>
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Hover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -198,14 +202,14 @@
         </Style>
 
         <Style TargetType="ListViewItem">
-            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Padding" Value="10,2"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource Brush.AppBackground}"/>
+                    <Setter Property="Background" Value="{StaticResource Brush.Hover}"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{StaticResource Brush.Selected}"/>
@@ -217,7 +221,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
             <Setter Property="FontWeight" Value="Normal"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="Padding" Value="10,8"/>
             <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>

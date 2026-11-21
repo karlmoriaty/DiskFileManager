@@ -33,6 +33,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private long _cleanupTotalBytes;
     private string _lastCleanupScanText = "尚未扫描";
     private int _selectedTabIndex;
+    private bool _isDetailPanelOpen;
 
     private const long PermanentConfirmThresholdBytes = 1024L * 1024 * 1024;
     private string? _selectedRecentTarget;
@@ -136,6 +137,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OpenRecycleBinCommand = new RelayCommand(() => _dialogs.OpenRecycleBin());
         OpenLogFolderCommand = new RelayCommand(OpenLogFolder);
         OpenAboutCommand = new RelayCommand(() => _dialogs.ShowAbout());
+        ToggleDetailPanelCommand = new RelayCommand(() => IsDetailPanelOpen = !IsDetailPanelOpen);
         BrowseTargetFolderCommand = new RelayCommand(BrowseTargetFolder);
 
         _largeFilesSummary = new SelectionSummary(LargeFiles);
@@ -193,6 +195,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand OpenRecycleBinCommand { get; }
     public RelayCommand OpenLogFolderCommand { get; }
     public RelayCommand OpenAboutCommand { get; }
+    public RelayCommand ToggleDetailPanelCommand { get; }
     public RelayCommand BrowseTargetFolderCommand { get; }
 
     public IReadOnlyList<string> DeleteModeOptions { get; } = new[] { "移到回收站（可恢复）", "永久删除（不可恢复）" };
@@ -203,6 +206,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         get => _selectedTabIndex;
         set => SetProperty(ref _selectedTabIndex, value);
+    }
+
+    public bool IsDetailPanelOpen
+    {
+        get => _isDetailPanelOpen;
+        set => SetProperty(ref _isDetailPanelOpen, value);
     }
 
     public string VersionText { get; } =

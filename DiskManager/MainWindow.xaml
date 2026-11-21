@@ -9,7 +9,7 @@
         Title="磁盘文件管理器" Height="820" Width="1400" MinWidth="1200" MinHeight="700"
         TextOptions.TextFormattingMode="Display"
         Icon="app.ico"
-        Background="{StaticResource Brush.Surface}"
+        Background="{StaticResource Brush.AppBackground}"
         WindowStartupLocation="CenterScreen">
     <Window.InputBindings>
         <KeyBinding Key="F5" Command="{Binding RefreshDisksCommand}"/>
@@ -24,12 +24,12 @@
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240"/>
+                <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{StaticResource Brush.Surface}"
+            <Border Grid.Column="0" Background="{StaticResource Brush.Sidebar}"
                     BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -100,9 +100,9 @@
                                     <ListView x:Name="DiskListView" ItemsSource="{Binding Disks}">
                                         <ListView.View>
                                             <GridView>
-                                                <GridViewColumn Header="盘符" Width="60" DisplayMemberBinding="{Binding DriveLetter}"/>
-                                                <GridViewColumn Header="名称" Width="90" DisplayMemberBinding="{Binding Name}"/>
-                                                <GridViewColumn Header="总容量" Width="90">
+                                                <GridViewColumn Header="盘符" Width="80" DisplayMemberBinding="{Binding DriveLetter}"/>
+                                                <GridViewColumn Header="名称" Width="220" DisplayMemberBinding="{Binding Name}"/>
+                                                <GridViewColumn Header="总容量" Width="180">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding TotalSizeFormatted}" FontFamily="Consolas"
@@ -110,7 +110,7 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="已使用" Width="90">
+                                                <GridViewColumn Header="已使用" Width="180">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding UsedSpaceFormatted}" FontFamily="Consolas"
@@ -118,7 +118,7 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="剩余空间" Width="90">
+                                                <GridViewColumn Header="剩余空间" Width="180">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding FreeSpaceFormatted}" FontFamily="Consolas"
@@ -126,7 +126,7 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="使用率" Width="100">
+                                                <GridViewColumn Header="使用率" Width="260">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <ProgressBar Value="{Binding UsedPercentage, Mode=OneWay}" Maximum="100"
@@ -150,7 +150,7 @@
                                     <ListView x:Name="LogListView" ItemsSource="{Binding Logs}" Height="220">
                                         <ListView.View>
                                             <GridView>
-                                                <GridViewColumn Header="时间" Width="150">
+                                                <GridViewColumn Header="时间" Width="180">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}"
@@ -158,8 +158,8 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="操作" Width="100" DisplayMemberBinding="{Binding Operation}"/>
-                                                <GridViewColumn Header="详情" Width="420" DisplayMemberBinding="{Binding Details}"/>
+                                                <GridViewColumn Header="操作" Width="120" DisplayMemberBinding="{Binding Operation}"/>
+                                                <GridViewColumn Header="详情" Width="620" DisplayMemberBinding="{Binding Details}"/>
                                                 <GridViewColumn Header="状态" Width="60">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
@@ -232,9 +232,9 @@
                                                             </DataTemplate>
                                                         </GridViewColumn.CellTemplate>
                                                     </GridViewColumn>
-                                                    <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
-                                                    <GridViewColumn Header="路径" Width="330" DisplayMemberBinding="{Binding FullPath}"/>
-                                                    <GridViewColumn Header="大小" Width="100">
+                                                    <GridViewColumn Header="文件名" Width="240" DisplayMemberBinding="{Binding Name}"/>
+                                                    <GridViewColumn Header="路径" Width="500" DisplayMemberBinding="{Binding FullPath}"/>
+                                                    <GridViewColumn Header="大小" Width="120">
                                                         <GridViewColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <TextBlock Text="{Binding SizeFormatted}" FontFamily="Consolas"
@@ -242,7 +242,7 @@
                                                             </DataTemplate>
                                                         </GridViewColumn.CellTemplate>
                                                     </GridViewColumn>
-                                                    <GridViewColumn Header="修改时间" Width="140"
+                                                    <GridViewColumn Header="修改时间" Width="190"
                                                                     DisplayMemberBinding="{Binding LastModified, StringFormat='yyyy-MM-dd HH:mm'}"/>
                                                 </GridView>
                                             </ListView.View>
@@ -411,8 +411,8 @@
                                                                         </DataTemplate>
                                                                     </GridViewColumn.CellTemplate>
                                                                 </GridViewColumn>
-                                                                <GridViewColumn Header="文件名" Width="180" DisplayMemberBinding="{Binding Name}"/>
-                                                                <GridViewColumn Header="路径" Width="330" DisplayMemberBinding="{Binding FullPath}"/>
+                                                                <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
+                                                                <GridViewColumn Header="路径" Width="500" DisplayMemberBinding="{Binding FullPath}"/>
                                                                 <GridViewColumn Header="大小" Width="90">
                                                                     <GridViewColumn.CellTemplate>
                                                                         <DataTemplate>
@@ -494,9 +494,9 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="文件名" Width="180" DisplayMemberBinding="{Binding Name}"/>
-                                                <GridViewColumn Header="路径" Width="340" DisplayMemberBinding="{Binding FullPath}"/>
-                                                <GridViewColumn Header="大小" Width="100">
+                                                <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
+                                                <GridViewColumn Header="路径" Width="560" DisplayMemberBinding="{Binding FullPath}"/>
+                                                <GridViewColumn Header="大小" Width="120">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding SizeFormatted}" FontFamily="Consolas"
@@ -504,7 +504,7 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="类型" Width="60">
+                                                <GridViewColumn Header="类型" Width="80">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding IsDirectory, Converter={StaticResource BooleanToTypeConverter}}"/>
@@ -536,7 +536,8 @@
                 </TabControl>
             </Border>
 
-            <Border Grid.Column="2" Background="{StaticResource Brush.Surface}" MinWidth="260"
+            <Border Grid.Column="2" Background="{StaticResource Brush.Surface}" Width="260"
+                    Visibility="{Binding IsDetailPanelOpen, Converter={StaticResource BoolToVisibility}}"
                     BorderBrush="{StaticResource Brush.Border}" BorderThickness="1,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20,20,20,20">
@@ -595,6 +596,8 @@
                 <TextBlock Text="{Binding StatusText}" FontSize="12"
                            Foreground="{StaticResource Brush.TextSecondary}" VerticalAlignment="Center"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="详情" Command="{Binding ToggleDetailPanelCommand}" Style="{StaticResource GhostButton}"
+                            Margin="0,0,8,0" ToolTip="显示或隐藏详情面板"/>
                     <Button Content="取消" Command="{Binding CancelCommand}" Style="{StaticResource GhostButton}"
                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
                     <ProgressBar Width="160" Height="6" Margin="8,0,0,0"
