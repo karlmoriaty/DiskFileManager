@@ -7,6 +7,7 @@ namespace DiskManager.Models;
 public class FileItem : ObservableObject
 {
     private bool _isSelected;
+    private long _size;
 
     public string FullPath { get; set; } = string.Empty;
     public string Name
@@ -18,7 +19,18 @@ public class FileItem : ObservableObject
             return string.IsNullOrEmpty(name) ? trimmed : name;
         }
     }
-    public long Size { get; set; }
+
+    public long Size
+    {
+        get => _size;
+        set
+        {
+            if (SetProperty(ref _size, value))
+            {
+                OnPropertyChanged(nameof(SizeFormatted));
+            }
+        }
+    }
     public DateTime LastModified { get; set; }
     public string Extension => Path.GetExtension(FullPath).ToLowerInvariant();
     public bool IsDirectory { get; set; }

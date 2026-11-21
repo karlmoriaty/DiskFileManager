@@ -29,6 +29,19 @@ public sealed class WpfDialogService : IDialogService
         return dialog.ShowDialog() == true ? dialog.FileNames : new List<string>();
     }
 
+    public string? PickSaveFile(string title, string defaultFileName, string filter)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = title,
+            FileName = defaultFileName,
+            Filter = filter,
+            OverwritePrompt = true
+        };
+
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
     public bool Confirm(string message, string title)
         => MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
@@ -47,6 +60,30 @@ public sealed class WpfDialogService : IDialogService
         catch (System.Exception ex)
         {
             Error($"无法打开文件位置: {ex.Message}");
+        }
+    }
+
+    public void OpenFolder(string path)
+    {
+        try
+        {
+            Process.Start("explorer.exe", $"\"{path}\"");
+        }
+        catch (System.Exception ex)
+        {
+            Error($"无法打开文件夹: {ex.Message}");
+        }
+    }
+
+    public void OpenRecycleBin()
+    {
+        try
+        {
+            Process.Start("explorer.exe", "shell:RecycleBinFolder");
+        }
+        catch (System.Exception ex)
+        {
+            Error($"无法打开回收站: {ex.Message}");
         }
     }
 }

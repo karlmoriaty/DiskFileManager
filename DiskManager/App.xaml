@@ -6,6 +6,7 @@
         <utils:BooleanToStatusConverter x:Key="BooleanToStatusConverter"/>
         <utils:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
         <utils:BooleanToTypeConverter x:Key="BooleanToTypeConverter"/>
+        <utils:UsageToBrushConverter x:Key="UsageToBrushConverter"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     </Application.Resources>
 </Application>

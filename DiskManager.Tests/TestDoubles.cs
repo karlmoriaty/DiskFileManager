@@ -52,11 +52,16 @@ internal sealed class FakeDialogService : IDialogService
     public bool ConfirmResult { get; set; } = true;
     public string? FolderToReturn { get; set; }
     public IReadOnlyList<string> FilesToReturn { get; set; } = new List<string>();
+    public string? SaveFileToReturn { get; set; }
     public List<string> OpenedPaths { get; } = new();
+    public List<string> OpenedFolders { get; } = new();
+    public int OpenRecycleBinCalls { get; private set; }
 
     public string? PickFolder(string description) => FolderToReturn;
 
     public IReadOnlyList<string> PickFiles(string title) => FilesToReturn;
+
+    public string? PickSaveFile(string title, string defaultFileName, string filter) => SaveFileToReturn;
 
     public bool Confirm(string message, string title)
     {
@@ -69,4 +74,8 @@ internal sealed class FakeDialogService : IDialogService
     public void Error(string message, string title = "错误") => Errors.Add(message);
 
     public void OpenInExplorer(string path) => OpenedPaths.Add(path);
+
+    public void OpenFolder(string path) => OpenedFolders.Add(path);
+
+    public void OpenRecycleBin() => OpenRecycleBinCalls++;
 }
