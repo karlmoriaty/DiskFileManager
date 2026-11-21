@@ -45,4 +45,15 @@ public class PathGuardTests
     {
         Assert.True(Guard.IsProtected(string.Empty));
     }
+
+    [Fact]
+    public void DefaultGuard_ProtectsDriveRootsAndSystemDirectories_WithoutEnumeratingDrives()
+    {
+        var guard = PathGuard.CreateDefault();
+
+        Assert.True(guard.IsProtected(@"Z:\"));
+        Assert.True(guard.IsProtected(@"Z:\$Recycle.Bin\abc"));
+        Assert.True(guard.IsProtected(@"Z:\System Volume Information\index"));
+        Assert.False(guard.IsProtected(@"Z:\data\file.txt"));
+    }
 }

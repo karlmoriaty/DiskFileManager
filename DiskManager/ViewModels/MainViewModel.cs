@@ -66,7 +66,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         PathGuard? guard = null,
         DiskMonitorService? monitor = null,
         SettingsService? settingsService = null,
-        AppSettings? settings = null)
+        AppSettings? settings = null,
+        bool autoRefreshDisks = true)
     {
         _dialogs = dialogs ?? new WpfDialogService();
         _recycleBin = recycleBin ?? new RecycleBinService();
@@ -108,7 +109,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _ownsMonitor = false;
         }
 
-        RefreshDisksCommand = new RelayCommand(RefreshDisks);
+        RefreshDisksCommand = new AsyncRelayCommand(RefreshDisksAsync);
         ScanLargeFilesCommand = new AsyncRelayCommand(ScanLargeFilesAsync);
         DeleteLargeFilesCommand = new AsyncRelayCommand(DeleteLargeFilesAsync);
         OpenFileLocationCommand = new RelayCommand(OpenFileLocation);
@@ -149,7 +150,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _monitor.StartMonitoring(30);
         }
 
-        RefreshDisks();
+        if (autoRefreshDisks)
+        {
+            _ = RefreshDisksAsync();
+        }
+
         LoadLogs();
     }
 
@@ -161,7 +166,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<FileItem> FileOperationItems { get; } = new();
     public ObservableCollection<string> Drives { get; } = new();
 
-    public RelayCommand RefreshDisksCommand { get; }
+    public AsyncRelayCommand RefreshDisksCommand { get; }
     public AsyncRelayCommand ScanLargeFilesCommand { get; }
     public AsyncRelayCommand DeleteLargeFilesCommand { get; }
     public RelayCommand OpenFileLocationCommand { get; }
@@ -394,10 +399,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _ => ConflictPolicy.Rename
         };
 
-    private void RefreshDisks()
+    internal async Task RefreshDisksAsync()
     {
+        StatusText = "正在检测磁盘...";
+        var disks = await Task.Run(() => _diskAnalysis.GetAllDisks());
+
         Disks.Clear();
-        foreach (var disk in _diskAnalysis.GetAllDisks())
+        foreach (var disk in disks)
         {
             Disks.Add(disk);
         }
@@ -417,6 +425,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _restoredCleanupDrive = null;
 
         UpdateTrend();
+        StatusText = $"就绪，已检测到 {Disks.Count} 个磁盘";
         _log.Log("刷新磁盘信息", $"发现 {Disks.Count} 个磁盘", true);
     }
 
