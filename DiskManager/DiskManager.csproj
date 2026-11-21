@@ -18,4 +18,8 @@
     <Description>Portable Windows disk and file manager</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Resource Include="app.ico" />
+  </ItemGroup>
+
 </Project>

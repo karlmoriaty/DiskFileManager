@@ -6,32 +6,59 @@
         xmlns:vm="clr-namespace:DiskManager.ViewModels"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Title="磁盘文件管理器" Height="760" Width="1200"
+        Title="磁盘文件管理器" Height="760" Width="1200" MinWidth="1000" MinHeight="640"
+        TextOptions.TextFormattingMode="Display"
+        Icon="app.ico"
+Background="{StaticResource Brush.Window}"
         WindowStartupLocation="CenterScreen">
     <Window.InputBindings>
         <KeyBinding Key="F5" Command="{Binding RefreshDisksCommand}"/>
         <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
     </Window.InputBindings>
 
-    <Grid Margin="10">
+    <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TabControl Grid.Row="0" x:Name="MainTabControl" SelectedIndex="{Binding SelectedTabIndex}">
-            <TabItem Header="磁盘概览">
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="磁盘概览"/>
+                </TabItem.Header>
                 <ScrollViewer>
-                    <StackPanel Margin="10">
-                        <TextBlock Text="磁盘空间概览" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <ListView x:Name="DiskListView" ItemsSource="{Binding Disks}" Margin="0,0,0,20">
+                    <StackPanel Margin="12" Background="{StaticResource Brush.Surface}">
+                        <TextBlock Text="磁盘空间概览" Style="{StaticResource PageTitle}"/>
+                        <ListView x:Name="DiskListView" ItemsSource="{Binding Disks}" Margin="0,0,0,12">
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="盘符" Width="80" DisplayMemberBinding="{Binding DriveLetter}"/>
                                     <GridViewColumn Header="名称" Width="120" DisplayMemberBinding="{Binding Name}"/>
-                                    <GridViewColumn Header="总容量" Width="100" DisplayMemberBinding="{Binding TotalSizeFormatted}"/>
-                                    <GridViewColumn Header="已使用" Width="100" DisplayMemberBinding="{Binding UsedSpaceFormatted}"/>
-                                    <GridViewColumn Header="剩余空间" Width="100" DisplayMemberBinding="{Binding FreeSpaceFormatted}"/>
+                                    <GridViewColumn Header="总容量" Width="100">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding TotalSizeFormatted}" FontFamily="Consolas" TextAlignment="Right"
+                                                           HorizontalAlignment="Stretch" Margin="0,0,6,0"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="已使用" Width="100">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding UsedSpaceFormatted}" FontFamily="Consolas" TextAlignment="Right"
+                                                           HorizontalAlignment="Stretch" Margin="0,0,6,0"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="剩余空间" Width="100">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding FreeSpaceFormatted}" FontFamily="Consolas" TextAlignment="Right"
+                                                           HorizontalAlignment="Stretch" Margin="0,0,6,0"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                     <GridViewColumn Header="使用率" Width="100">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -45,18 +72,27 @@
                         </ListView>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Button Content="刷新磁盘信息" Command="{Binding RefreshDisksCommand}" Width="120" Margin="0,0,10,0"/>
-                            <Button Content="打开日志文件夹" Command="{Binding OpenLogFolderCommand}" Width="120"/>
+                            <Button Content="刷新磁盘信息" Command="{Binding RefreshDisksCommand}" Width="120" Margin="0,0,10,0"
+                                    Style="{StaticResource PrimaryButton}" ToolTip="刷新磁盘信息（F5）"/>
+                            <Button Content="打开日志文件夹" Command="{Binding OpenLogFolderCommand}" Width="120"
+                                    Style="{StaticResource GhostButton}"/>
                         </StackPanel>
 
-                        <TextBlock Text="空间使用趋势" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
-                        <TextBlock Text="{Binding TrendText}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock Text="空间使用趋势" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{Binding TrendText}" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="{StaticResource Brush.TextSecondary}"/>
 
-                        <TextBlock Text="操作日志" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
+                        <TextBlock Text="操作日志" Style="{StaticResource SectionTitle}"/>
                         <ListView x:Name="LogListView" ItemsSource="{Binding Logs}" Height="200">
                             <ListView.View>
                                 <GridView>
-                                    <GridViewColumn Header="时间" Width="150" DisplayMemberBinding="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}"/>
+                                    <GridViewColumn Header="时间" Width="150">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Timestamp, StringFormat='yyyy-MM-dd HH:mm:ss'}"
+                                                           FontFamily="Consolas" Margin="0,0,4,0"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                     <GridViewColumn Header="操作" Width="100" DisplayMemberBinding="{Binding Operation}"/>
                                     <GridViewColumn Header="详情" Width="360" DisplayMemberBinding="{Binding Details}"/>
                                     <GridViewColumn Header="状态" Width="80">
@@ -73,8 +109,11 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="大文件">
-                <Grid Margin="10">
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="大文件"/>
+                </TabItem.Header>
+                <Grid Margin="12" Background="{StaticResource Brush.Surface}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -89,8 +128,20 @@
                         <TextBlock Text="最小文件大小(MB):" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <TextBox Width="80" Margin="0,0,10,0"
                                  Text="{Binding MinFileSizeText, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="浏览…" Command="{Binding BrowseLargeFilePathCommand}" Width="70" Margin="0,0,10,0"/>
-                        <Button Content="扫描大文件" Command="{Binding ScanLargeFilesCommand}" Width="100"/>
+                        <Button Command="{Binding BrowseLargeFilePathCommand}" Width="76" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="浏览"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ScanLargeFilesCommand}" Width="110"
+                                Style="{StaticResource PrimaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE721;" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="扫描大文件"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
@@ -108,7 +159,7 @@
                         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
                             <TextBlock Text="搜索:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <TextBox Width="220" Text="{Binding LargeFileSearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,0"/>
-                            <TextBlock Text="{Binding LargeFilesSummary}" Foreground="Gray" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding LargeFilesSummary}" Style="{StaticResource HintText}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                     <ListView Grid.Row="1" x:Name="LargeFilesListView" ItemsSource="{Binding LargeFilesView}"
@@ -125,26 +176,46 @@
                                 </GridViewColumn>
                                 <GridViewColumn Header="文件名" Width="230" DisplayMemberBinding="{Binding Name}"/>
                                 <GridViewColumn Header="路径" Width="400" DisplayMemberBinding="{Binding FullPath}"/>
-                                <GridViewColumn Header="大小" Width="120" DisplayMemberBinding="{Binding SizeFormatted}"/>
+                                <GridViewColumn Header="大小" Width="120">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SizeFormatted}" FontFamily="Consolas" TextAlignment="Right"
+                                                       HorizontalAlignment="Stretch" Margin="0,0,6,0"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="修改时间" Width="150" DisplayMemberBinding="{Binding LastModified, StringFormat='yyyy-MM-dd HH:mm'}"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
+
+                        <Border Grid.Row="1" Background="{StaticResource Brush.Surface}"
+                                Visibility="{Binding LargeFiles.Count, Converter={StaticResource ZeroToVisible}}">
+                            <TextBlock Text="尚无结果。选择路径后点击“扫描大文件”。"
+                                       Style="{StaticResource HintText}" Margin="8,8,0,0" VerticalAlignment="Top"/>
+                        </Border>
                     </Grid>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button Content="全选/全不选" Command="{Binding SelectAllLargeFilesCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="删除选中文件" Command="{Binding DeleteLargeFilesCommand}" Width="120" Margin="0,0,10,0"/>
+                        <Button Content="全选/全不选" Command="{Binding SelectAllLargeFilesCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}"/>
+                        <Button Content="删除选中文件" Command="{Binding DeleteLargeFilesCommand}" Width="120" Margin="0,0,10,0"
+                                Style="{StaticResource DangerButton}" ToolTip="删除方式在“文件操作”页设置"/>
                         <Button Content="打开文件位置" Width="120"
                                 Command="{Binding OpenFileLocationCommand}"
-                                CommandParameter="{Binding SelectedItem, ElementName=LargeFilesListView}"/>
-                        <Button Content="导出 CSV" Command="{Binding ExportLargeFilesCommand}" Width="90" Margin="10,0,0,0"/>
+                                CommandParameter="{Binding SelectedItem, ElementName=LargeFilesListView}"
+                                Style="{StaticResource GhostButton}"/>
+                        <Button Content="导出 CSV" Command="{Binding ExportLargeFilesCommand}" Width="90" Margin="10,0,0,0"
+                                Style="{StaticResource GhostButton}"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="重复文件">
-                <Grid Margin="10">
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="重复文件"/>
+                </TabItem.Header>
+                <Grid Margin="12" Background="{StaticResource Brush.Surface}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -160,9 +231,22 @@
                         <ComboBox Width="160" Margin="0,0,10,0"
                                   ItemsSource="{Binding KeepStrategyOptions}"
                                   SelectedIndex="{Binding SelectedKeepStrategyIndex}"/>
-                        <Button Content="浏览…" Command="{Binding BrowseDuplicatePathCommand}" Width="70" Margin="0,0,10,0"/>
-                        <Button Content="扫描重复文件" Command="{Binding ScanDuplicatesCommand}" Width="120"/>
-                        <Button Content="导出 CSV" Command="{Binding ExportDuplicatesCommand}" Width="90" Margin="10,0,0,0"/>
+                        <Button Command="{Binding BrowseDuplicatePathCommand}" Width="76" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="浏览"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ScanDuplicatesCommand}" Width="120"
+                                Style="{StaticResource PrimaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE721;" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="扫描重复文件"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Content="导出 CSV" Command="{Binding ExportDuplicatesCommand}" Width="90" Margin="10,0,0,0"
+                                Style="{StaticResource GhostButton}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
@@ -195,43 +279,67 @@
                         </TreeView.ItemTemplate>
                     </TreeView>
 
+                    <Border Grid.Row="2" Background="{StaticResource Brush.Surface}"
+                            Visibility="{Binding DuplicateGroups.Count, Converter={StaticResource ZeroToVisible}}">
+                        <TextBlock Text="尚无结果。选择路径后点击“扫描重复文件”。"
+                                   Style="{StaticResource HintText}" Margin="8,8,0,0" VerticalAlignment="Top"/>
+                    </Border>
+
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button Content="全选副本/全不选" Command="{Binding ToggleAllDuplicateFilesCommand}" Width="130" Margin="0,0,10,0"/>
-                        <Button Content="删除选中副本(未选按策略)" Command="{Binding DeleteDuplicatesCommand}" Width="180"/>
+                        <Button Content="全选副本/全不选" Command="{Binding ToggleAllDuplicateFilesCommand}" Width="130" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}"/>
+                        <Button Content="删除选中副本(未选按策略)" Command="{Binding DeleteDuplicatesCommand}" Width="180"
+                                Style="{StaticResource DangerButton}" ToolTip="删除方式在“文件操作”页设置"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="清理建议">
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="清理建议"/>
+                </TabItem.Header>
                 <ScrollViewer>
-                    <StackPanel Margin="10">
+                    <StackPanel Margin="12" Background="{StaticResource Brush.Surface}">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <TextBlock Text="目标磁盘:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                             <ComboBox Width="90" Margin="0,0,10,0"
                                       ItemsSource="{Binding Drives}"
                                       SelectedItem="{Binding SelectedCleanupDrive}"/>
-                            <Button Content="扫描清理建议" Command="{Binding ScanCleanupCommand}" Width="120" Margin="0,0,10,0"/>
-                            <Button Content="打开回收站" Command="{Binding OpenRecycleBinCommand}" Width="100"/>
+                            <Button Command="{Binding ScanCleanupCommand}" Width="130" Margin="0,0,10,0"
+                                    Style="{StaticResource PrimaryButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE721;" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="扫描清理建议"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Content="打开回收站" Command="{Binding OpenRecycleBinCommand}" Width="100"
+                                    Style="{StaticResource GhostButton}"/>
                         </StackPanel>
 
                         <TextBlock Text="提示：回收站按所选磁盘统计和清空；临时文件与浏览器缓存固定在系统盘和当前用户目录。"
-                                   Foreground="Gray" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                   Style="{StaticResource HintText}" Margin="0,0,0,10"/>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="{Binding CleanupTotalFormatted, StringFormat='可释放合计: {0}'}"
-                                       FontWeight="Bold" Foreground="#2E7D32" Margin="0,0,16,0"/>
-                            <TextBlock Text="{Binding LastCleanupScanText}" Foreground="Gray"/>
+                                       FontWeight="Bold" Foreground="{StaticResource Brush.Success}" Margin="0,0,16,0"/>
+                            <TextBlock Text="{Binding LastCleanupScanText}" Style="{StaticResource HintText}"/>
                         </StackPanel>
+
+                        <TextBlock Text="还没有清理建议，选择磁盘后点击“扫描清理建议”。"
+                                   Style="{StaticResource HintText}"
+                                   Visibility="{Binding CleanupSuggestions.Count, Converter={StaticResource ZeroToVisible}}"/>
 
                         <ItemsControl x:Name="CleanupSuggestionsItemsControl" ItemsSource="{Binding CleanupSuggestions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+                                    <Border Style="{StaticResource Card}">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Category}" FontWeight="Bold" FontSize="14"/>
+                                                <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                         Fill="{Binding IsSafeToDelete, Converter={StaticResource BooleanToColorConverter}}"/>
+                                                <TextBlock Text="{Binding Category}" FontWeight="SemiBold" FontSize="14"/>
                                                 <TextBlock Text=" - " Margin="5,0,5,0"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="Gray"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="{StaticResource Brush.TextSecondary}"/>
                                                 <TextBlock Text=" - " Margin="5,0,5,0"/>
                                                 <TextBlock Text="{Binding TotalSizeFormatted}" Foreground="{Binding IsSafeToDelete, Converter={StaticResource BooleanToColorConverter}}"/>
                                                 <TextBlock Text=" (" Margin="5,0,0,0"/>
@@ -240,6 +348,7 @@
                                             </StackPanel>
 
                                             <Button Content="全选/全不选" Width="110" HorizontalAlignment="Left" Margin="0,5,0,5"
+                                                    Style="{StaticResource GhostButton}"
                                                     IsEnabled="{Binding CanSelectFiles}"
                                                     Command="{Binding DataContext.ToggleCleanupSelectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
@@ -257,12 +366,20 @@
                                                         </GridViewColumn>
                                                         <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
                                                         <GridViewColumn Header="路径" Width="380" DisplayMemberBinding="{Binding FullPath}"/>
-                                                        <GridViewColumn Header="大小" Width="100" DisplayMemberBinding="{Binding SizeFormatted}"/>
+                                                        <GridViewColumn Header="大小" Width="100">
+                                                            <GridViewColumn.CellTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding SizeFormatted}" FontFamily="Consolas" TextAlignment="Right"
+                                                                               HorizontalAlignment="Stretch" Margin="0,0,6,0"/>
+                                                                </DataTemplate>
+                                                            </GridViewColumn.CellTemplate>
+                                                        </GridViewColumn>
                                                     </GridView>
                                                 </ListView.View>
                                             </ListView>
 
                                             <Button Content="{Binding ActionText}" Width="130" HorizontalAlignment="Right" Margin="0,10,0,0"
+                                                    Style="{StaticResource DangerButton}"
                                                     Command="{Binding DataContext.DeleteCleanupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
                                         </StackPanel>
@@ -274,8 +391,11 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="文件操作">
-                <Grid Margin="10">
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="文件操作"/>
+                </TabItem.Header>
+                <Grid Margin="12" Background="{StaticResource Brush.Surface}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -284,24 +404,33 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="添加文件" Command="{Binding AddFilesCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="添加文件夹" Command="{Binding AddFolderCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="全选/全不选" Command="{Binding SelectAllFileOperationsCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="移除选中" Command="{Binding RemoveSelectedFileOperationsCommand}" Width="90" Margin="0,0,10,0"/>
-                        <Button Content="清空列表" Command="{Binding ClearListCommand}" Width="100" Margin="0,0,10,0"/>
+                        <Button Content="添加文件" Command="{Binding AddFilesCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource PrimaryButton}"/>
+                        <Button Content="添加文件夹" Command="{Binding AddFolderCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}"/>
+                        <Button Content="全选/全不选" Command="{Binding SelectAllFileOperationsCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}"/>
+                        <Button Content="移除选中" Command="{Binding RemoveSelectedFileOperationsCommand}" Width="90" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}"/>
+                        <Button Content="清空列表" Command="{Binding ClearListCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource GhostButton}"/>
                         <TextBlock Text="搜索:" VerticalAlignment="Center" Margin="0,0,4,0"/>
                         <TextBox Width="180" Text="{Binding FileOperationSearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,0"/>
-                        <TextBlock Text="{Binding FileOperationsSummary}" Foreground="Gray" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding FileOperationsSummary}" Style="{StaticResource HintText}" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="目标文件夹:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <ComboBox Width="260" ItemsSource="{Binding RecentTargets}"
+                        <ComboBox Width="240" ItemsSource="{Binding RecentTargets}"
                                   SelectedItem="{Binding SelectedRecentTarget}" Margin="0,0,8,0"/>
-                        <Button Content="选择目标…" Command="{Binding BrowseTargetFolderCommand}" Width="100" Margin="0,0,16,0"/>
+                        <Button Content="选择目标…" Command="{Binding BrowseTargetFolderCommand}" Width="100" Margin="0,0,16,0"
+                                Style="{StaticResource GhostButton}"/>
                         <TextBlock Text="同名冲突:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <ComboBox Width="160" ItemsSource="{Binding ConflictOptions}"
-                                  SelectedIndex="{Binding SelectedConflictIndex}"/>
+                        <ComboBox Width="150" ItemsSource="{Binding ConflictOptions}"
+                                  SelectedIndex="{Binding SelectedConflictIndex}" Margin="0,0,16,0"/>
+                        <TextBlock Text="删除方式:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="190" ItemsSource="{Binding DeleteModeOptions}"
+                                  SelectedIndex="{Binding SelectedDeleteModeIndex}"/>
                     </StackPanel>
 
                     <ListView Grid.Row="2" x:Name="FileOperationListView" ItemsSource="{Binding FileOperationsView}"
@@ -319,7 +448,14 @@
                                 </GridViewColumn>
                                 <GridViewColumn Header="文件名" Width="200" DisplayMemberBinding="{Binding Name}"/>
                                 <GridViewColumn Header="路径" Width="420" DisplayMemberBinding="{Binding FullPath}"/>
-                                <GridViewColumn Header="大小" Width="120" DisplayMemberBinding="{Binding SizeFormatted}"/>
+                                <GridViewColumn Header="大小" Width="120">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SizeFormatted}" FontFamily="Consolas" TextAlignment="Right"
+                                                       HorizontalAlignment="Stretch" Margin="0,0,6,0"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="类型" Width="80">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
@@ -331,10 +467,19 @@
                         </ListView.View>
                     </ListView>
 
+                    <Border Grid.Row="2" Background="{StaticResource Brush.Surface}"
+                            Visibility="{Binding FileOperationItems.Count, Converter={StaticResource ZeroToVisible}}">
+                        <TextBlock Text="列表为空。拖拽文件或文件夹到这里，或点击“添加文件”。"
+                                   Style="{StaticResource HintText}" Margin="8,8,0,0" VerticalAlignment="Top"/>
+                    </Border>
+
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button Content="批量复制" Command="{Binding BatchCopyCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="批量移动" Command="{Binding BatchMoveCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="批量删除" Command="{Binding BatchDeleteCommand}" Width="100"/>
+                        <Button Content="批量复制" Command="{Binding BatchCopyCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource PrimaryButton}"/>
+                        <Button Content="批量移动" Command="{Binding BatchMoveCommand}" Width="100" Margin="0,0,10,0"
+                                Style="{StaticResource PrimaryButton}"/>
+                        <Button Content="批量删除" Command="{Binding BatchDeleteCommand}" Width="100"
+                                Style="{StaticResource DangerButton}"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
@@ -348,18 +493,18 @@
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">
-                    <ComboBox Width="150" Margin="0,0,10,0"
-                              ItemsSource="{Binding DeleteModeOptions}"
-                              SelectedIndex="{Binding SelectedDeleteModeIndex}"/>
                     <Button Content="取消" Width="70" Margin="0,0,8,0"
                             Command="{Binding CancelCommand}"
+                            Style="{StaticResource GhostButton}"
+                            ToolTip="取消当前任务（Esc）"
                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
                     <ProgressBar Width="200" Height="18"
                                  Value="{Binding ProgressValue, Mode=OneWay}"
                                  IsIndeterminate="{Binding IsProgressIndeterminate}"
                                  Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
-                    <Button Content="关于" Width="60" Margin="8,0,0,0" Command="{Binding OpenAboutCommand}"/>
-                    <TextBlock Text="{Binding VersionText}" Foreground="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                    <Button Content="关于" Width="60" Margin="8,0,0,0" Command="{Binding OpenAboutCommand}"
+                            Style="{StaticResource GhostButton}"/>
+                    <TextBlock Text="{Binding VersionText}" Style="{StaticResource HintText}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
