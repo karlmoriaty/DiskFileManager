@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using DiskManager.Models;
 using DiskManager.Services;
@@ -102,6 +103,46 @@ public partial class MainWindow : Window
         await _viewModel.CancelAndWaitAsync(TimeSpan.FromSeconds(8));
         _allowClose = true;
         Close();
+    }
+
+    private void LargeFilesHeader_Click(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is GridViewColumnHeader header && header.Content is string title)
+        {
+            var property = title switch
+            {
+                "文件名" => nameof(FileItem.Name),
+                "路径" => nameof(FileItem.FullPath),
+                "大小" => nameof(FileItem.Size),
+                "修改时间" => nameof(FileItem.LastModified),
+                _ => null
+            };
+
+            if (property != null)
+            {
+                _viewModel.SortLargeFiles(property);
+            }
+        }
+    }
+
+    private void FileOperationsHeader_Click(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is GridViewColumnHeader header && header.Content is string title)
+        {
+            var property = title switch
+            {
+                "文件名" => nameof(FileItem.Name),
+                "路径" => nameof(FileItem.FullPath),
+                "大小" => nameof(FileItem.Size),
+                "类型" => nameof(FileItem.IsDirectory),
+                _ => null
+            };
+
+            if (property != null)
+            {
+                _viewModel.SortFileOperations(property);
+            }
+        }
     }
 
     private void LargeFilesListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)

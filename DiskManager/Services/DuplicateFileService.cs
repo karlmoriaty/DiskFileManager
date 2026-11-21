@@ -18,14 +18,16 @@ public class DuplicateFileService
     public Task<List<DuplicateFileGroup>> FindDuplicatesAsync(
         string path,
         IProgress<int>? progress = null,
+        ScanFilters? filters = null,
         CancellationToken cancellationToken = default)
-        => Task.Run(() => FindDuplicates(path, progress, cancellationToken), cancellationToken);
+        => Task.Run(() => FindDuplicates(path, progress, filters, cancellationToken), cancellationToken);
 
     public int LastSkippedCloudFileCount { get; private set; }
 
     public List<DuplicateFileGroup> FindDuplicates(
         string path,
         IProgress<int>? progress = null,
+        ScanFilters? filters = null,
         CancellationToken cancellationToken = default)
     {
         var throttled = new ThrottledProgress(progress);
@@ -36,6 +38,11 @@ public class DuplicateFileService
         {
             try
             {
+                if (filters != null && filters.IsExcludedFile(file))
+                {
+                    return;
+                }
+
                 var info = new FileInfo(file);
                 if (info.Length == 0)
                 {
@@ -53,7 +60,7 @@ public class DuplicateFileService
             catch (Exception)
             {
             }
-        });
+        }, filters);
 
         throttled.Report(10, true);
 

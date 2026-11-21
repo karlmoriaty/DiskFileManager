@@ -77,11 +77,12 @@
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="扫描路径:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <TextBox Width="300" Margin="0,0,10,0"
                                  Text="{Binding LargeFileScanPath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -92,16 +93,27 @@
                         <Button Content="扫描大文件" Command="{Binding ScanLargeFilesCommand}" Width="100"/>
                     </StackPanel>
 
-                    <Grid Grid.Row="1">
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <CheckBox Content="默认排除系统/构建目录" IsChecked="{Binding UseDefaultExclusions}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <TextBlock Text="额外排除(名称或路径，分号分隔):" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox Width="300" Text="{Binding CustomExclusions, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{Binding LargeFilesSummary}" Foreground="Gray" Margin="0,0,0,6"/>
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="搜索:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox Width="220" Text="{Binding LargeFileSearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,0"/>
+                            <TextBlock Text="{Binding LargeFilesSummary}" Foreground="Gray" VerticalAlignment="Center"/>
+                        </StackPanel>
 
-                    <ListView Grid.Row="1" x:Name="LargeFilesListView" ItemsSource="{Binding LargeFiles}"
-                              MouseDoubleClick="LargeFilesListView_MouseDoubleClick">
+                    <ListView Grid.Row="1" x:Name="LargeFilesListView" ItemsSource="{Binding LargeFilesView}"
+                              MouseDoubleClick="LargeFilesListView_MouseDoubleClick"
+                              GridViewColumnHeader.Click="LargeFilesHeader_Click">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="选择" Width="60">
@@ -120,7 +132,7 @@
                     </ListView>
                     </Grid>
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
                         <Button Content="全选/全不选" Command="{Binding SelectAllLargeFilesCommand}" Width="100" Margin="0,0,10,0"/>
                         <Button Content="删除选中文件" Command="{Binding DeleteLargeFilesCommand}" Width="120" Margin="0,0,10,0"/>
                         <Button Content="打开文件位置" Width="120"
@@ -135,11 +147,12 @@
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="扫描路径:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <TextBox Width="300" Margin="0,0,10,0"
                                  Text="{Binding DuplicateScanPath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -152,7 +165,13 @@
                         <Button Content="导出 CSV" Command="{Binding ExportDuplicatesCommand}" Width="90" Margin="10,0,0,0"/>
                     </StackPanel>
 
-                    <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" ItemsSource="{Binding DuplicateGroups}"
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <CheckBox Content="默认排除系统/构建目录" IsChecked="{Binding UseDefaultExclusions}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <TextBlock Text="排除扩展名(分号分隔):" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox Width="160" Text="{Binding ExcludedExtensions, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <TreeView Grid.Row="2" x:Name="DuplicateFilesTreeView" ItemsSource="{Binding DuplicateGroups}"
                               VirtualizingStackPanel.IsVirtualizing="True"
                               VirtualizingStackPanel.VirtualizationMode="Recycling">
                         <TreeView.ItemTemplate>
@@ -176,7 +195,7 @@
                         </TreeView.ItemTemplate>
                     </TreeView>
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
                         <Button Content="全选副本/全不选" Command="{Binding ToggleAllDuplicateFilesCommand}" Width="130" Margin="0,0,10,0"/>
                         <Button Content="删除选中副本(未选按策略)" Command="{Binding DeleteDuplicatesCommand}" Width="180"/>
                     </StackPanel>
@@ -267,6 +286,8 @@
                         <Button Content="全选/全不选" Command="{Binding SelectAllFileOperationsCommand}" Width="100" Margin="0,0,10,0"/>
                         <Button Content="移除选中" Command="{Binding RemoveSelectedFileOperationsCommand}" Width="90" Margin="0,0,10,0"/>
                         <Button Content="清空列表" Command="{Binding ClearListCommand}" Width="100" Margin="0,0,10,0"/>
+                        <TextBlock Text="搜索:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox Width="180" Text="{Binding FileOperationSearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,0"/>
                         <TextBlock Text="{Binding FileOperationsSummary}" Foreground="Gray" VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -276,9 +297,10 @@
                                   SelectedIndex="{Binding SelectedConflictIndex}"/>
                     </StackPanel>
 
-                    <ListView Grid.Row="2" x:Name="FileOperationListView" ItemsSource="{Binding FileOperationItems}"
+                    <ListView Grid.Row="2" x:Name="FileOperationListView" ItemsSource="{Binding FileOperationsView}"
                               AllowDrop="True" DragOver="FileOperationListView_DragOver" Drop="FileOperationListView_Drop"
-                              MouseDoubleClick="FileOperationListView_MouseDoubleClick">
+                              MouseDoubleClick="FileOperationListView_MouseDoubleClick"
+                              GridViewColumnHeader.Click="FileOperationsHeader_Click">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="选择" Width="60">

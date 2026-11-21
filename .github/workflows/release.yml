@@ -1,0 +1,46 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore DiskManager.sln
+
+      - name: Test
+        run: dotnet test DiskManager.Tests/DiskManager.Tests.csproj -c Release
+
+      - name: Publish portable build
+        shell: pwsh
+        run: |
+          dotnet publish DiskManager/DiskManager.csproj -c Release -r win-x64 --self-contained true -o out `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=true
+          Copy-Item "启动程序.bat" out/
+          Copy-Item "README.md" out/
+          Compress-Archive -Path out/* -DestinationPath DiskManager_Portable.zip -Force
+          $hash = (Get-FileHash DiskManager_Portable.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  DiskManager_Portable.zip" | Out-File -Encoding ascii DiskManager_Portable.zip.sha256
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME DiskManager_Portable.zip DiskManager_Portable.zip.sha256 `
+            --title "Disk File Manager $env:GITHUB_REF_NAME" --generate-notes
