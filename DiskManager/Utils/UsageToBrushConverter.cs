@@ -10,17 +10,9 @@ public sealed class UsageToBrushConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         var percent = value is double number ? number : 0d;
-        if (percent >= 90)
-        {
-            return Brushes.IndianRed;
-        }
-
-        if (percent >= 70)
-        {
-            return Brushes.DarkOrange;
-        }
-
-        return Brushes.SeaGreen;
+        return percent >= 90
+            ? new SolidColorBrush(Color.FromRgb(0x8C, 0x3A, 0x35))
+            : new SolidColorBrush(Color.FromRgb(0x1F, 0x1E, 0x1D));
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

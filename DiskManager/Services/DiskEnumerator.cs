@@ -30,6 +30,7 @@ public static class DiskEnumerator
                 {
                     DriveLetter = drive.Name,
                     Name = GetVolumeLabel(drive),
+                    FileSystem = GetFileSystem(drive),
                     TotalSize = total,
                     UsedSpace = total - free,
                     FreeSpace = free
@@ -48,6 +49,18 @@ public static class DiskEnumerator
         try
         {
             return drive.VolumeLabel;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string GetFileSystem(DriveInfo drive)
+    {
+        try
+        {
+            return drive.DriveFormat;
         }
         catch (Exception)
         {

@@ -36,14 +36,30 @@
         </Style>
 
         <Style x:Key="SectionTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
             <Setter Property="Margin" Value="4,0,0,8"/>
         </Style>
 
+        <Style x:Key="MetricLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="MetricValue" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+        </Style>
+
+        
+
+        
+
         <Style x:Key="HintText" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
@@ -175,7 +191,7 @@
                     <ControlTemplate TargetType="ListBoxItem">
                         <Grid>
                             <Border x:Name="Bg" Background="Transparent" CornerRadius="8"/>
-                            <Border x:Name="Indicator" Width="3" Margin="0,10"
+                            <Border x:Name="Indicator" Width="2" Margin="0,9"
                                     HorizontalAlignment="Left" CornerRadius="1.5"
                                     Background="{StaticResource Brush.Primary}" Visibility="Collapsed"/>
                             <ContentPresenter Margin="{TemplateBinding Padding}"/>
@@ -217,11 +233,21 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="CompactListItem" TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="8,1"/>
+        </Style>
+
+        
+
+        
+
         <Style TargetType="GridViewColumnHeader">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
             <Setter Property="FontWeight" Value="Normal"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Padding" Value="10,8"/>
             <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>

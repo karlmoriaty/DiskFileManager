@@ -6,6 +6,7 @@ public class DiskInfo
 {
     public string DriveLetter { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string FileSystem { get; set; } = string.Empty;
     public long TotalSize { get; set; }
     public long UsedSpace { get; set; }
     public long FreeSpace { get; set; }
