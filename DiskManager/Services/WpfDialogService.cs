@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 
 namespace DiskManager.Services;
@@ -57,7 +59,7 @@ public sealed class WpfDialogService : IDialogService
         {
             Process.Start("explorer.exe", $"/select,\"{path}\"");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             Error($"无法打开文件位置: {ex.Message}");
         }
@@ -69,7 +71,7 @@ public sealed class WpfDialogService : IDialogService
         {
             Process.Start("explorer.exe", $"\"{path}\"");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             Error($"无法打开文件夹: {ex.Message}");
         }
@@ -81,9 +83,24 @@ public sealed class WpfDialogService : IDialogService
         {
             Process.Start("explorer.exe", "shell:RecycleBinFolder");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             Error($"无法打开回收站: {ex.Message}");
         }
+    }
+
+    public void ShowAbout()
+    {
+        var logDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "DiskManager",
+            "Logs");
+
+        var window = new AboutWindow(logDirectory)
+        {
+            Owner = Application.Current?.MainWindow
+        };
+
+        window.ShowDialog();
     }
 }

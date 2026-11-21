@@ -13,4 +13,5 @@ public interface IDialogService
     void OpenInExplorer(string path);
     void OpenFolder(string path);
     void OpenRecycleBin();
+    void ShowAbout();
 }

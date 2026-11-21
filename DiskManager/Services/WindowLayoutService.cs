@@ -6,8 +6,8 @@ namespace DiskManager.Services;
 
 public sealed class WindowLayout
 {
-    public double Width { get; set; } = 1200;
-    public double Height { get; set; } = 760;
+    public double Width { get; set; } = 1400;
+    public double Height { get; set; } = 820;
     public double? Left { get; set; }
     public double? Top { get; set; }
     public bool Maximized { get; set; }
@@ -45,7 +45,7 @@ public sealed class WindowLayoutService
         {
             var json = File.ReadAllText(_filePath);
             var layout = JsonSerializer.Deserialize<WindowLayout>(json);
-            if (layout == null || layout.Width < 900 || layout.Height < 600)
+            if (layout == null || layout.Width < 1250 || layout.Height < 700)
             {
                 return new WindowLayout();
             }

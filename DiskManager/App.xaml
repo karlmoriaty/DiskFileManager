@@ -7,6 +7,226 @@
         <utils:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
         <utils:BooleanToTypeConverter x:Key="BooleanToTypeConverter"/>
         <utils:UsageToBrushConverter x:Key="UsageToBrushConverter"/>
+        <utils:ZeroToVisibleConverter x:Key="ZeroToVisible"/>
+        <utils:IndexToVisibilityConverter x:Key="IndexToVisibility"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+
+        <SolidColorBrush x:Key="Brush.Primary" Color="#0DBD8B"/>
+        <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#E6F7F2"/>
+        <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626"/>
+        <SolidColorBrush x:Key="Brush.DangerSoft" Color="#FDECEA"/>
+        <SolidColorBrush x:Key="Brush.Success" Color="#0DBD8B"/>
+        <SolidColorBrush x:Key="Brush.Warning" Color="#D97706"/>
+        <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="Brush.AppBackground" Color="#F3F4F6"/>
+        <SolidColorBrush x:Key="Brush.Border" Color="#E5E7EB"/>
+        <SolidColorBrush x:Key="Brush.Hover" Color="#F3F4F6"/>
+        <SolidColorBrush x:Key="Brush.Selected" Color="#F3F4F6"/>
+        <SolidColorBrush x:Key="Brush.TextPrimary" Color="#111827"/>
+        <SolidColorBrush x:Key="Brush.TextSecondary" Color="#6B7280"/>
+
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="Margin" Value="4,0,0,8"/>
+        </Style>
+
+        <Style x:Key="HintText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="ListCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Brush.Hover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Brush.Selected}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource Brush.PrimarySoft}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.Primary}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource Brush.DangerSoft}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource Brush.AppBackground}"/>
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource Brush.Primary}"/>
+                    <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="HiddenHeaderTabControl" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <ContentPresenter ContentSource="SelectedContent"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="NavList" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        </Style>
+
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Grid>
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="6"/>
+                            <Border x:Name="Indicator" Width="3" Margin="0,9"
+                                    HorizontalAlignment="Left" CornerRadius="1.5"
+                                    Background="{StaticResource Brush.Primary}" Visibility="Collapsed"/>
+                            <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Selected}"/>
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.AppBackground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ListView">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style TargetType="ListViewItem">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="10,2"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Brush.AppBackground}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Brush.Selected}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+
+        <Style TargetType="TreeViewItem">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="2,2"/>
+        </Style>
     </Application.Resources>
 </Application>

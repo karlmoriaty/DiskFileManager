@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace DiskManager.Models;
 
 public sealed class AppSettings
@@ -13,4 +15,5 @@ public sealed class AppSettings
     public bool UseDefaultExclusions { get; set; } = true;
     public string CustomExclusions { get; set; } = string.Empty;
     public string ExcludedExtensions { get; set; } = ".tmp;.log";
+    public List<string> RecentTargets { get; set; } = new();
 }

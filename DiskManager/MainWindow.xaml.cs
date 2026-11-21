@@ -30,7 +30,9 @@ public partial class MainWindow : Window
         Width = layout.Width;
         Height = layout.Height;
 
-        if (layout.Left.HasValue && layout.Top.HasValue)
+        if (layout.Left.HasValue
+            && layout.Top.HasValue
+            && IsVisiblePosition(layout.Left.Value, layout.Top.Value))
         {
             WindowStartupLocation = WindowStartupLocation.Manual;
             Left = layout.Left.Value;
@@ -43,13 +45,36 @@ public partial class MainWindow : Window
         }
     }
 
+    private static bool IsVisiblePosition(double left, double top)
+    {
+        var virtualLeft = SystemParameters.VirtualScreenLeft;
+        var virtualTop = SystemParameters.VirtualScreenTop;
+        var virtualRight = virtualLeft + SystemParameters.VirtualScreenWidth;
+        var virtualBottom = virtualTop + SystemParameters.VirtualScreenHeight;
+
+        return left >= virtualLeft - 100
+               && top >= virtualTop - 100
+               && left <= virtualRight - 200
+               && top <= virtualBottom - 200;
+    }
+
     private void SaveLayout()
     {
+        if (WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
         try
         {
             var bounds = WindowState == WindowState.Normal
                 ? new Rect(Left, Top, ActualWidth, ActualHeight)
                 : RestoreBounds;
+
+            if (bounds.Width < 900 || bounds.Height < 600 || !IsVisiblePosition(bounds.Left, bounds.Top))
+            {
+                return;
+            }
 
             _layoutService.Save(new WindowLayout
             {
