@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
@@ -14,9 +16,20 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        SetupDiagnosticLogging();
+
         _instanceMutex = new Mutex(true, @"Local\DiskManager_SingleInstance", out var isFirstInstance);
         _ownsInstanceMutex = isFirstInstance;
-        if (!isFirstInstance)
+
+        var processName = Process.GetCurrentProcess().ProcessName;
+        var otherInstances = Process.GetProcessesByName(processName)
+            .Where(process => process.Id != Environment.ProcessId)
+            .ToArray();
+
+        WriteDiagnosticLog(
+            $"单实例检查：mutexFirst={isFirstInstance}，同名进程={otherInstances.Length}（{processName}）");
+
+        if (otherInstances.Length > 0)
         {
             MessageBox.Show("磁盘文件管理器已经在运行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
@@ -25,7 +38,6 @@ public partial class App : Application
 
         base.OnStartup(e);
 
-        SetupDiagnosticLogging();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
@@ -35,6 +47,7 @@ public partial class App : Application
             var mainWindow = new MainWindow();
             MainWindow = mainWindow;
             mainWindow.Show();
+            WriteDiagnosticLog("主窗口已显示");
         }
         catch (Exception ex)
         {

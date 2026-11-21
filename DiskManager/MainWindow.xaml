@@ -295,6 +295,10 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="目标文件夹:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="260" ItemsSource="{Binding RecentTargets}"
+                                  SelectedItem="{Binding SelectedRecentTarget}" Margin="0,0,8,0"/>
+                        <Button Content="选择目标…" Command="{Binding BrowseTargetFolderCommand}" Width="100" Margin="0,0,16,0"/>
                         <TextBlock Text="同名冲突:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <ComboBox Width="160" ItemsSource="{Binding ConflictOptions}"
                                   SelectedIndex="{Binding SelectedConflictIndex}"/>
@@ -354,6 +358,7 @@
                                  Value="{Binding ProgressValue, Mode=OneWay}"
                                  IsIndeterminate="{Binding IsProgressIndeterminate}"
                                  Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                    <Button Content="关于" Width="60" Margin="8,0,0,0" Command="{Binding OpenAboutCommand}"/>
                     <TextBlock Text="{Binding VersionText}" Foreground="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </StatusBarItem>
