@@ -88,21 +88,72 @@
 
                     <TabItem>
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="4,0,0,12">
+                                                        <StackPanel>
+                                <Border Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}"
+                                        BorderThickness="1" Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0" Padding="16,10">
+                                            <StackPanel>
+                                                <TextBlock Text="磁盘" Style="{StaticResource MetricLabel}"/>
+                                                <TextBlock Text="{Binding DiskCountText}" Style="{StaticResource MetricValue}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="1" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0" Padding="16,10">
+                                            <StackPanel>
+                                                <TextBlock Text="总容量" Style="{StaticResource MetricLabel}"/>
+                                                <TextBlock Text="{Binding TotalCapacityText}" Style="{StaticResource MetricValue}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="2" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0" Padding="16,10">
+                                            <StackPanel>
+                                                <TextBlock Text="已用" Style="{StaticResource MetricLabel}"/>
+                                                <TextBlock Text="{Binding TotalUsedText}" Style="{StaticResource MetricValue}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="3" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0" Padding="16,10">
+                                            <StackPanel>
+                                                <TextBlock Text="可用" Style="{StaticResource MetricLabel}"/>
+                                                <TextBlock Text="{Binding TotalFreeText}" Style="{StaticResource MetricValue}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="4" Padding="16,10">
+                                            <StackPanel>
+                                                <TextBlock Text="峰值使用率" Style="{StaticResource MetricLabel}"/>
+                                                <TextBlock Text="{Binding PeakUsageText}" Style="{StaticResource MetricValue}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Button Content="刷新磁盘信息" Command="{Binding RefreshDisksCommand}"
                                             Style="{StaticResource PrimaryButton}" Margin="0,0,4,0" ToolTip="刷新磁盘信息（F5）"/>
                                     <Button Content="打开日志文件夹" Command="{Binding OpenLogFolderCommand}"
                                             Style="{StaticResource GhostButton}"/>
                                 </StackPanel>
 
-                                <Border Style="{StaticResource ListCard}">
-                                    <ListView x:Name="DiskListView" ItemsSource="{Binding Disks}">
+                                <Border Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}"
+                                        BorderThickness="1" Margin="0,0,0,16">
+                                    <ListView x:Name="DiskListView" ItemsSource="{Binding Disks}"
+                                              ItemContainerStyle="{StaticResource CompactListItem}">
                                         <ListView.View>
                                             <GridView>
-                                                <GridViewColumn Header="盘符" Width="80" DisplayMemberBinding="{Binding DriveLetter}"/>
-                                                <GridViewColumn Header="名称" Width="220" DisplayMemberBinding="{Binding Name}"/>
-                                                <GridViewColumn Header="总容量" Width="180">
+                                                <GridViewColumn Header="盘符" Width="64" DisplayMemberBinding="{Binding DriveLetter}"/>
+                                                <GridViewColumn Header="卷标" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                                                <GridViewColumn Header="文件系统" Width="100" DisplayMemberBinding="{Binding FileSystem}"/>
+                                                <GridViewColumn Header="总容量" Width="120">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding TotalSizeFormatted}" FontFamily="Consolas"
@@ -110,7 +161,7 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="已使用" Width="180">
+                                                <GridViewColumn Header="已用" Width="120">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding UsedSpaceFormatted}" FontFamily="Consolas"
@@ -118,7 +169,7 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="剩余空间" Width="180">
+                                                <GridViewColumn Header="可用" Width="120">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding FreeSpaceFormatted}" FontFamily="Consolas"
@@ -126,12 +177,17 @@
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
-                                                <GridViewColumn Header="使用率" Width="260">
+                                                <GridViewColumn Header="使用率" Width="200">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
-                                                            <ProgressBar Value="{Binding UsedPercentage, Mode=OneWay}" Maximum="100"
-                                                                         Height="14" Width="80"
-                                                                         Foreground="{Binding UsedPercentage, Converter={StaticResource UsageToBrushConverter}}"/>
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <ProgressBar Width="64" Height="3" Minimum="0" Maximum="100"
+                                                                             Value="{Binding UsedPercentage, Mode=OneWay}"
+                                                                             Background="#E8E5DD" BorderThickness="0"
+                                                                             Foreground="{Binding UsedPercentage, Converter={StaticResource UsageToBrushConverter}}"/>
+                                                                <TextBlock Text="{Binding UsedPercentage, StringFormat='{}{0:0.0}%'}"
+                                                                           FontFamily="Consolas" Width="52" TextAlignment="Right" Margin="8,0,0,0"/>
+                                                            </StackPanel>
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
@@ -140,14 +196,27 @@
                                     </ListView>
                                 </Border>
 
-                                <TextBlock Text="空间使用趋势" Style="{StaticResource SectionTitle}"/>
-                                <Border Style="{StaticResource Card}">
-                                    <TextBlock Text="{Binding TrendText}" Style="{StaticResource HintText}"/>
+                                <TextBlock Text="使用趋势（近 7 天）" Style="{StaticResource SectionTitle}"/>
+                                <Border Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}"
+                                        BorderThickness="1" Padding="16,10" Margin="0,0,0,16">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="近 7 天变化" Style="{StaticResource MetricLabel}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding TrendChangeText}" FontFamily="Consolas" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="预计填满" Style="{StaticResource MetricLabel}" VerticalAlignment="Center" Margin="32,0,0,0"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding TrendFillText}" FontFamily="Consolas" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
                                 </Border>
 
-                                <TextBlock Text="操作日志" Style="{StaticResource SectionTitle}"/>
-                                <Border Style="{StaticResource ListCard}">
-                                    <ListView x:Name="LogListView" ItemsSource="{Binding Logs}" Height="220">
+                                <TextBlock Text="最近操作" Style="{StaticResource SectionTitle}"/>
+                                <Border Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1">
+                                    <ListView x:Name="LogListView" ItemsSource="{Binding Logs}" Height="160"
+                                              ItemContainerStyle="{StaticResource CompactListItem}">
                                         <ListView.View>
                                             <GridView>
                                                 <GridViewColumn Header="时间" Width="180">
@@ -159,11 +228,15 @@
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>
                                                 <GridViewColumn Header="操作" Width="120" DisplayMemberBinding="{Binding Operation}"/>
-                                                <GridViewColumn Header="详情" Width="620" DisplayMemberBinding="{Binding Details}"/>
-                                                <GridViewColumn Header="状态" Width="60">
+                                                <GridViewColumn Header="详情" Width="600" DisplayMemberBinding="{Binding Details}"/>
+                                                <GridViewColumn Header="状态" Width="100">
                                                     <GridViewColumn.CellTemplate>
                                                         <DataTemplate>
-                                                            <TextBlock Text="{Binding IsSuccess, Converter={StaticResource BooleanToStatusConverter}}"/>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Ellipse Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                         Fill="{Binding IsSuccess, Converter={StaticResource BooleanToColorConverter}}"/>
+                                                                <TextBlock Text="{Binding IsSuccess, Converter={StaticResource BooleanToStatusConverter}}"/>
+                                                            </StackPanel>
                                                         </DataTemplate>
                                                     </GridViewColumn.CellTemplate>
                                                 </GridViewColumn>

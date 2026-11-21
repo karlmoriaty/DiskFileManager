@@ -227,6 +227,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string CleanupTotalFormatted => Utils.SizeFormatter.Format(_cleanupTotalBytes);
 
+    public string DiskCountText => Disks.Count.ToString();
+
+    public string TotalCapacityText => Utils.SizeFormatter.Format(Disks.Sum(disk => disk.TotalSize));
+
+    public string TotalUsedText => Utils.SizeFormatter.Format(Disks.Sum(disk => disk.UsedSpace));
+
+    public string TotalFreeText => Utils.SizeFormatter.Format(Disks.Sum(disk => disk.FreeSpace));
+
+    public string PeakUsageText => Disks.Count == 0
+        ? "—"
+        : $"{Disks.Max(disk => disk.UsedPercentage):0.0}%";
+
+    public string TrendChangeText { get; private set; } = "—";
+
+    public string TrendFillText { get; private set; } = "—";
+
     public string LastCleanupScanText
     {
         get => _lastCleanupScanText;
@@ -434,6 +450,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _restoredCleanupDrive = null;
 
         UpdateTrend();
+        OnPropertyChanged(nameof(DiskCountText));
+        OnPropertyChanged(nameof(TotalCapacityText));
+        OnPropertyChanged(nameof(TotalUsedText));
+        OnPropertyChanged(nameof(TotalFreeText));
+        OnPropertyChanged(nameof(PeakUsageText));
         StatusText = $"就绪，已检测到 {Disks.Count} 个磁盘";
         _log.Log("刷新磁盘信息", $"发现 {Disks.Count} 个磁盘", true);
     }
@@ -444,19 +465,24 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var history = _monitor.GetHistoryForDrive(systemDrive, 7);
         if (history.Count < 2)
         {
-            TrendText = "数据不足，无法计算趋势。请保持程序运行以收集更多数据。";
+            TrendText = "样本不足，暂无法计算变化趋势。";
+            TrendChangeText = "—";
+            TrendFillText = "—";
+            OnPropertyChanged(nameof(TrendChangeText));
+            OnPropertyChanged(nameof(TrendFillText));
             return;
         }
 
         var trend = _monitor.GetTrendForDrive(systemDrive, 7);
-        if (trend.IsIncreasing)
-        {
-            TrendText = $"磁盘使用趋势: {trend.DailyChangeFormatted}\n警告: 预计 {trend.EstimatedDaysUntilFull} 天后磁盘将满。";
-        }
-        else
-        {
-            TrendText = $"磁盘使用趋势: {trend.DailyChangeFormatted}\n良好: 磁盘空间正在增加或保持稳定。";
-        }
+        var sign = trend.DailyChangeBytes >= 0 ? "+" : "−";
+        var change = sign + Utils.SizeFormatter.Format(Math.Abs(trend.DailyChangeBytes)) + " / 天";
+        var fill = trend.EstimatedDaysUntilFull < 0 ? "—" : $"{trend.EstimatedDaysUntilFull} 天";
+
+        TrendChangeText = change;
+        TrendFillText = fill;
+        TrendText = $"近 7 天使用量变化 {change}，预计 {fill} 后填满。";
+        OnPropertyChanged(nameof(TrendChangeText));
+        OnPropertyChanged(nameof(TrendFillText));
     }
 
     private async Task ScanLargeFilesAsync()
