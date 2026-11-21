@@ -21,6 +21,8 @@ public sealed class FileOperationService
     private readonly IRecycleBinService _recycleBin;
     private readonly LogService _log;
 
+    public bool LastRunHadPermissionIssue { get; private set; }
+
     public FileOperationService(PathGuard guard, IRecycleBinService recycleBin, LogService log)
     {
         _guard = guard;
@@ -51,6 +53,14 @@ public sealed class FileOperationService
         CancellationToken cancellationToken = default)
         => Task.Run(() => RunDelete(paths, mode, progress, cancellationToken), cancellationToken);
 
+    private void MarkPermissionFailure(Exception exception)
+    {
+        if (exception is UnauthorizedAccessException)
+        {
+            LastRunHadPermissionIssue = true;
+        }
+    }
+
     public bool DeletePath(string path, DeleteMode mode)
     {
         if (_guard.IsProtected(path))
@@ -77,6 +87,7 @@ public sealed class FileOperationService
         }
         catch (Exception ex)
         {
+            MarkPermissionFailure(ex);
             _log.Log("删除", path, false, ex.Message);
             return false;
         }
@@ -91,6 +102,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken)
     {
         var result = new OperationResult();
+        LastRunHadPermissionIssue = false;
         if (!Directory.Exists(destinationFolder))
         {
             result.MarkFailed($"目标文件夹不存在: {destinationFolder}");
@@ -165,6 +177,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken)
     {
         var result = new OperationResult();
+        LastRunHadPermissionIssue = false;
         var total = Math.Max(1, CountAllEntries(paths, cancellationToken));
         var processed = 0;
         var throttled = new ThrottledProgress(progress);
@@ -214,6 +227,7 @@ public sealed class FileOperationService
             }
             catch (Exception ex)
             {
+                MarkPermissionFailure(ex);
                 result.MarkFailed($"{path}: {ex.Message}");
                 _log.Log("删除", path, false, ex.Message);
             }
@@ -345,6 +359,7 @@ public sealed class FileOperationService
         }
         catch (Exception ex)
         {
+            MarkPermissionFailure(ex);
             accessor.Advance();
             _log.Log("复制", $"{source} -> {destination}", false, ex.Message);
             return Outcome.Failed;
@@ -420,6 +435,7 @@ public sealed class FileOperationService
         }
         catch (Exception ex)
         {
+            MarkPermissionFailure(ex);
             _log.Log("移动", $"{source} -> {destination}", false, ex.Message);
             return Outcome.Failed;
         }
@@ -521,6 +537,7 @@ public sealed class FileOperationService
         }
         catch (Exception ex)
         {
+            MarkPermissionFailure(ex);
             _log.Log("复制目录", $"{source} -> {destination}", false, ex.Message);
             return Outcome.Failed;
         }

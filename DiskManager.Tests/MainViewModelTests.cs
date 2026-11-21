@@ -33,19 +33,20 @@ public class MainViewModelTests : IDisposable
             new LogService(),
             new PathGuard(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>()),
             new DiskMonitorService(_dataDirectory),
-            new SettingsService(Path.Combine(_dataDirectory, "settings")));
+            new SettingsService(Path.Combine(_dataDirectory, "settings")),
+            autoRefreshDisks: false);
 
     [Fact]
-    public void Constructor_InitialisesDisksAndStatus()
+    public void Constructor_InitialisesState()
     {
         using var viewModel = CreateViewModel();
 
-        Assert.Equal("就绪", viewModel.StatusText);
-        Assert.NotEmpty(viewModel.Drives);
-        Assert.NotNull(viewModel.SelectedCleanupDrive);
         Assert.Equal(0, viewModel.SelectedDeleteModeIndex);
         Assert.NotNull(viewModel.DeleteModeOptions);
         Assert.Equal(3, viewModel.KeepStrategyOptions.Count);
+        Assert.NotNull(viewModel.StatusText);
+        Assert.Empty(viewModel.LargeFiles);
+        Assert.Empty(viewModel.CleanupSuggestions);
     }
 
     [Fact]

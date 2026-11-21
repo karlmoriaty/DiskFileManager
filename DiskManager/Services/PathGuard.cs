@@ -7,6 +7,12 @@ namespace DiskManager.Services;
 
 public sealed class PathGuard
 {
+    private static readonly string[] SystemDirectoryNames =
+    {
+        "$Recycle.Bin",
+        "System Volume Information"
+    };
+
     private readonly string[] _protectedRoots;
     private readonly string[] _protectedSelf;
     private readonly string[] _allowedSubtrees;
@@ -42,12 +48,6 @@ public sealed class PathGuard
             roots.Add(Path.Combine(windows, "Recovery"));
         }
 
-        foreach (var drive in GetReadyDrives())
-        {
-            roots.Add(Path.Combine(drive, "System Volume Information"));
-            roots.Add(Path.Combine(drive, "$Recycle.Bin"));
-        }
-
         return roots;
     }
 
@@ -60,7 +60,6 @@ public sealed class PathGuard
             result.Add(profile);
         }
 
-        result.AddRange(GetReadyDrives());
         return result;
     }
 
@@ -78,32 +77,6 @@ public sealed class PathGuard
             Path.Combine(windows, "SoftwareDistribution", "Download"),
             Path.Combine(windows, "Logs", "CBS")
         };
-    }
-
-    private static IEnumerable<string> GetReadyDrives()
-    {
-        var drives = new List<string>();
-        try
-        {
-            foreach (var drive in DriveInfo.GetDrives())
-            {
-                if (!drive.IsReady)
-                {
-                    continue;
-                }
-
-                var root = drive.RootDirectory.FullName;
-                if (!string.IsNullOrWhiteSpace(root))
-                {
-                    drives.Add(root);
-                }
-            }
-        }
-        catch (Exception)
-        {
-        }
-
-        return drives;
     }
 
     public static string Normalize(string path)
@@ -133,6 +106,11 @@ public sealed class PathGuard
             return true;
         }
 
+        if (IsDriveRoot(full) || ContainsSystemDirectory(full))
+        {
+            return true;
+        }
+
         if (_allowedSubtrees.Any(allowed => IsStrictlyInside(full, allowed)))
         {
             return false;
@@ -144,6 +122,26 @@ public sealed class PathGuard
         }
 
         return _protectedSelf.Any(root => string.Equals(full, root, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsDriveRoot(string full)
+        => full.Length == 3
+           && full[1] == ':'
+           && (full[2] == Path.DirectorySeparatorChar || full[2] == Path.AltDirectorySeparatorChar);
+
+    private static bool ContainsSystemDirectory(string full)
+    {
+        foreach (var segment in full.Split(
+                     new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+                     StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (SystemDirectoryNames.Any(name => string.Equals(name, segment, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool IsSameOrInside(string path, string root)

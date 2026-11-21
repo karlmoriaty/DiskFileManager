@@ -34,6 +34,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private string _lastCleanupScanText = "尚未扫描";
     private int _selectedTabIndex;
 
+    private const long PermanentConfirmThresholdBytes = 1024L * 1024 * 1024;
+    private string? _selectedRecentTarget;
+
     private CancellationTokenSource? _cts;
     private Task? _activeTask;
     private bool _isBusy;
@@ -63,7 +66,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         PathGuard? guard = null,
         DiskMonitorService? monitor = null,
         SettingsService? settingsService = null,
-        AppSettings? settings = null)
+        AppSettings? settings = null,
+        bool autoRefreshDisks = true)
     {
         _dialogs = dialogs ?? new WpfDialogService();
         _recycleBin = recycleBin ?? new RecycleBinService();
@@ -86,6 +90,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _customExclusions = saved.CustomExclusions;
         _excludedExtensions = saved.ExcludedExtensions;
 
+        foreach (var target in saved.RecentTargets
+                     .Where(Directory.Exists)
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Take(5))
+        {
+            RecentTargets.Add(target);
+        }
+
         if (monitor == null)
         {
             _monitor = new DiskMonitorService();
@@ -97,7 +109,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _ownsMonitor = false;
         }
 
-        RefreshDisksCommand = new RelayCommand(RefreshDisks);
+        RefreshDisksCommand = new AsyncRelayCommand(RefreshDisksAsync);
         ScanLargeFilesCommand = new AsyncRelayCommand(ScanLargeFilesAsync);
         DeleteLargeFilesCommand = new AsyncRelayCommand(DeleteLargeFilesAsync);
         OpenFileLocationCommand = new RelayCommand(OpenFileLocation);
@@ -123,6 +135,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ExportDuplicatesCommand = new RelayCommand(ExportDuplicates);
         OpenRecycleBinCommand = new RelayCommand(() => _dialogs.OpenRecycleBin());
         OpenLogFolderCommand = new RelayCommand(OpenLogFolder);
+        OpenAboutCommand = new RelayCommand(() => _dialogs.ShowAbout());
+        BrowseTargetFolderCommand = new RelayCommand(BrowseTargetFolder);
 
         _largeFilesSummary = new SelectionSummary(LargeFiles);
         _fileOperationsSummary = new SelectionSummary(FileOperationItems);
@@ -136,7 +150,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _monitor.StartMonitoring(30);
         }
 
-        RefreshDisks();
+        if (autoRefreshDisks)
+        {
+            _ = RefreshDisksAsync();
+        }
+
         LoadLogs();
     }
 
@@ -148,7 +166,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<FileItem> FileOperationItems { get; } = new();
     public ObservableCollection<string> Drives { get; } = new();
 
-    public RelayCommand RefreshDisksCommand { get; }
+    public AsyncRelayCommand RefreshDisksCommand { get; }
     public AsyncRelayCommand ScanLargeFilesCommand { get; }
     public AsyncRelayCommand DeleteLargeFilesCommand { get; }
     public RelayCommand OpenFileLocationCommand { get; }
@@ -174,6 +192,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand ExportDuplicatesCommand { get; }
     public RelayCommand OpenRecycleBinCommand { get; }
     public RelayCommand OpenLogFolderCommand { get; }
+    public RelayCommand OpenAboutCommand { get; }
+    public RelayCommand BrowseTargetFolderCommand { get; }
 
     public IReadOnlyList<string> DeleteModeOptions { get; } = new[] { "移到回收站（可恢复）", "永久删除（不可恢复）" };
     public IReadOnlyList<string> KeepStrategyOptions { get; } = new[] { "保留路径最短的副本", "保留最新的副本", "保留最旧的副本" };
@@ -202,6 +222,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         get => _lastCleanupScanText;
         private set => SetProperty(ref _lastCleanupScanText, value);
+    }
+
+    public ObservableCollection<string> RecentTargets { get; } = new();
+
+    public string? SelectedRecentTarget
+    {
+        get => _selectedRecentTarget;
+        set => SetProperty(ref _selectedRecentTarget, value);
     }
 
     public ICollectionView LargeFilesView
@@ -371,10 +399,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _ => ConflictPolicy.Rename
         };
 
-    private void RefreshDisks()
+    internal async Task RefreshDisksAsync()
     {
+        StatusText = "正在检测磁盘...";
+        var disks = await Task.Run(() => _diskAnalysis.GetAllDisks());
+
         Disks.Clear();
-        foreach (var disk in _diskAnalysis.GetAllDisks())
+        foreach (var disk in disks)
         {
             Disks.Add(disk);
         }
@@ -394,6 +425,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _restoredCleanupDrive = null;
 
         UpdateTrend();
+        StatusText = $"就绪，已检测到 {Disks.Count} 个磁盘";
         _log.Log("刷新磁盘信息", $"发现 {Disks.Count} 个磁盘", true);
     }
 
@@ -459,9 +491,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!_dialogs.Confirm(
-                $"确定要删除选中的 {selected.Count} 个文件吗？\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
-                "确认删除"))
+        if (!ConfirmDeletion(
+                selected.Count,
+                selected.Sum(file => file.Size),
+                $"确定要删除选中的 {selected.Count} 个文件吗？\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}"))
         {
             return;
         }
@@ -487,6 +520,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             StatusText = $"删除完成，{result.Summary}";
             _dialogs.Info($"删除完成。\n{result.Summary}");
+            ShowPermissionHint();
         });
     }
 
@@ -587,9 +621,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             preview += $"{Environment.NewLine}… 其余 {plan.Count - 5} 组略";
         }
 
-        if (!_dialogs.Confirm(
-                $"将删除 {targets.Count} 个副本，涉及 {plan.Count} 组（每组至少保留一个{(manualSelected > 0 ? $"，手动选择 {manualSelected} 个" : string.Empty)}）。\n\n预览:\n{preview}\n\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
-                "确认删除"))
+        if (!ConfirmDeletion(
+                targets.Count,
+                targets.Sum(file => file.Size),
+                $"将删除 {targets.Count} 个副本，涉及 {plan.Count} 组（每组至少保留一个{(manualSelected > 0 ? $"，手动选择 {manualSelected} 个" : string.Empty)}）。\n\n预览:\n{preview}\n\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}"))
         {
             return;
         }
@@ -626,6 +661,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             StatusText = $"删除重复文件完成，{result.Summary}";
             _dialogs.Info($"删除完成。\n{result.Summary}");
+            ShowPermissionHint();
         });
     }
 
@@ -702,9 +738,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!_dialogs.Confirm(
-                $"确定要删除选中的 {selected.Count} 个文件吗？\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
-                "确认删除"))
+        if (!ConfirmDeletion(
+                selected.Count,
+                selected.Sum(file => file.Size),
+                $"确定要删除选中的 {selected.Count} 个文件吗？\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}"))
         {
             return;
         }
@@ -732,6 +769,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             suggestion.NotifyFilesChanged();
             StatusText = $"删除完成，{result.Summary}";
             _dialogs.Info($"删除完成。\n{result.Summary}");
+            ShowPermissionHint();
         });
     }
 
@@ -880,6 +918,51 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void BrowseTargetFolder()
+    {
+        var folder = _dialogs.PickFolder("选择默认目标文件夹");
+        if (!string.IsNullOrEmpty(folder))
+        {
+            AddRecentTarget(folder);
+        }
+    }
+
+    private string? ResolveTargetFolder()
+    {
+        if (!string.IsNullOrWhiteSpace(SelectedRecentTarget) && Directory.Exists(SelectedRecentTarget))
+        {
+            return SelectedRecentTarget;
+        }
+
+        var folder = _dialogs.PickFolder("选择目标文件夹");
+        if (string.IsNullOrEmpty(folder))
+        {
+            return null;
+        }
+
+        AddRecentTarget(folder);
+        return folder;
+    }
+
+    internal void AddRecentTarget(string folder)
+    {
+        var existing = RecentTargets.FirstOrDefault(item =>
+            string.Equals(item, folder, StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            RecentTargets.Remove(existing);
+        }
+
+        RecentTargets.Insert(0, folder);
+        while (RecentTargets.Count > 5)
+        {
+            RecentTargets.RemoveAt(RecentTargets.Count - 1);
+        }
+
+        SelectedRecentTarget = folder;
+    }
+
     private void SelectAllLargeFiles()
     {
         var select = LargeFiles.Any(item => !item.IsSelected);
@@ -1012,7 +1095,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             SelectedTabIndex = SelectedTabIndex,
             UseDefaultExclusions = UseDefaultExclusions,
             CustomExclusions = CustomExclusions,
-            ExcludedExtensions = ExcludedExtensions
+            ExcludedExtensions = ExcludedExtensions,
+            RecentTargets = RecentTargets.ToList()
         });
     }
 
@@ -1025,7 +1109,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var target = _dialogs.PickFolder("选择目标文件夹");
+        var target = ResolveTargetFolder();
         if (string.IsNullOrEmpty(target))
         {
             return;
@@ -1046,6 +1130,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _dialogs.Info(result.AllSucceeded
                 ? $"复制完成。\n{result.Summary}"
                 : $"部分文件处理失败。\n{result.Summary}");
+            ShowPermissionHint();
         });
     }
 
@@ -1058,7 +1143,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var target = _dialogs.PickFolder("选择目标文件夹");
+        var target = ResolveTargetFolder();
         if (string.IsNullOrEmpty(target))
         {
             return;
@@ -1090,6 +1175,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _dialogs.Info(result.AllSucceeded
                 ? $"移动完成。\n{result.Summary}"
                 : $"部分文件处理失败。\n{result.Summary}");
+            ShowPermissionHint();
         });
     }
 
@@ -1102,9 +1188,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!_dialogs.Confirm(
-                $"确定要删除选中的 {selected.Count} 个文件/文件夹吗？\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
-                "确认删除"))
+        if (!ConfirmDeletion(
+                selected.Count,
+                selected.Sum(file => file.Size),
+                $"确定要删除选中的 {selected.Count} 个文件/文件夹吗？\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}"))
         {
             return;
         }
@@ -1130,7 +1217,36 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             StatusText = $"删除完成，{result.Summary}";
             _dialogs.Info($"删除完成。\n{result.Summary}");
+            ShowPermissionHint();
         });
+    }
+
+    internal bool ConfirmDeletion(int count, long totalSize, string message)
+    {
+        if (EffectiveDeleteMode != DeleteMode.Permanent || totalSize < PermanentConfirmThresholdBytes)
+        {
+            return _dialogs.Confirm(message, "确认删除");
+        }
+
+        var sizeText = Utils.SizeFormatter.Format(totalSize);
+        if (!_dialogs.Confirm(
+                $"{message}{Environment.NewLine}{Environment.NewLine}即将永久删除 {count} 项，共 {sizeText}，不会进入回收站。是否继续？",
+                "永久删除确认"))
+        {
+            return false;
+        }
+
+        return _dialogs.Confirm(
+            $"再次确认：{sizeText} 数据将永久丢失且无法恢复。{Environment.NewLine}确定删除吗？",
+            "最终确认");
+    }
+
+    private void ShowPermissionHint()
+    {
+        if (_files.LastRunHadPermissionIssue)
+        {
+            _dialogs.Info("部分操作因权限不足失败。可关闭程序后使用“以管理员身份打开”重试。", "权限提示");
+        }
     }
 
     private void Cancel() => _cts?.Cancel();
