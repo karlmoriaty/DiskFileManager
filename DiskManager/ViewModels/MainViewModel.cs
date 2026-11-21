@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Data;
 using DiskManager.Models;
 using DiskManager.Services;
 
@@ -45,6 +47,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private int _selectedDeleteModeIndex;
     private int _selectedKeepStrategyIndex = 1;
     private int _selectedConflictIndex = 2;
+    private string _largeFileSearchText = string.Empty;
+    private string _fileOperationSearchText = string.Empty;
+    private string _customExclusions = string.Empty;
+    private bool _useDefaultExclusions = true;
+    private string _excludedExtensions = ".tmp;.log";
+    private ICollectionView? _largeFilesView;
+    private ICollectionView? _fileOperationsView;
 
     public MainViewModel(
         IDialogService? dialogs = null,
@@ -72,6 +81,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _selectedConflictIndex = saved.ConflictIndex;
         _selectedTabIndex = saved.SelectedTabIndex;
         _restoredCleanupDrive = saved.CleanupDrive;
+        _useDefaultExclusions = saved.UseDefaultExclusions;
+        _customExclusions = saved.CustomExclusions;
+        _excludedExtensions = saved.ExcludedExtensions;
 
         if (monitor == null)
         {
@@ -184,6 +196,76 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         : $"共 {_fileOperationsSummary.TotalCount} 项，合计 {Utils.SizeFormatter.Format(_fileOperationsSummary.TotalSize)}；已选 {_fileOperationsSummary.SelectedCount} 项 / {Utils.SizeFormatter.Format(_fileOperationsSummary.SelectedSize)}";
 
     public string CleanupTotalFormatted => Utils.SizeFormatter.Format(_cleanupTotalBytes);
+
+    public ICollectionView LargeFilesView
+    {
+        get
+        {
+            if (_largeFilesView == null)
+            {
+                _largeFilesView = CollectionViewSource.GetDefaultView(LargeFiles);
+                _largeFilesView.Filter = FilterLargeFile;
+            }
+
+            return _largeFilesView;
+        }
+    }
+
+    public ICollectionView FileOperationsView
+    {
+        get
+        {
+            if (_fileOperationsView == null)
+            {
+                _fileOperationsView = CollectionViewSource.GetDefaultView(FileOperationItems);
+                _fileOperationsView.Filter = FilterFileOperation;
+            }
+
+            return _fileOperationsView;
+        }
+    }
+
+    public string LargeFileSearchText
+    {
+        get => _largeFileSearchText;
+        set
+        {
+            if (SetProperty(ref _largeFileSearchText, value))
+            {
+                LargeFilesView.Refresh();
+            }
+        }
+    }
+
+    public string FileOperationSearchText
+    {
+        get => _fileOperationSearchText;
+        set
+        {
+            if (SetProperty(ref _fileOperationSearchText, value))
+            {
+                FileOperationsView.Refresh();
+            }
+        }
+    }
+
+    public bool UseDefaultExclusions
+    {
+        get => _useDefaultExclusions;
+        set => SetProperty(ref _useDefaultExclusions, value);
+    }
+
+    public string CustomExclusions
+    {
+        get => _customExclusions;
+        set => SetProperty(ref _customExclusions, value);
+    }
+
+    public string ExcludedExtensions
+    {
+        get => _excludedExtensions;
+        set => SetProperty(ref _excludedExtensions, value);
+    }
 
     public string LargeFileScanPath
     {
@@ -347,7 +429,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             var progress = new Progress<int>(count => StatusText = $"正在扫描大文件... 已扫描 {count} 个文件");
             var items = await _diskAnalysis.FindLargeFilesAsync(
-                LargeFileScanPath, minSizeMb * 1024 * 1024, 100, progress, token);
+                LargeFileScanPath, minSizeMb * 1024 * 1024, 100, progress, BuildScanFilters(), token);
 
             LargeFiles.Clear();
             foreach (var item in items)
@@ -428,7 +510,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 StatusText = $"正在扫描重复文件... {value}%";
             });
 
-            var groups = await _duplicates.FindDuplicatesAsync(DuplicateScanPath, progress, token);
+            var groups = await _duplicates.FindDuplicatesAsync(DuplicateScanPath, progress, BuildScanFilters(), token);
 
             DuplicateGroups.Clear();
             foreach (var group in groups)
@@ -722,6 +804,41 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void ClearList() => FileOperationItems.Clear();
 
+    private ScanFilters BuildScanFilters()
+        => ScanFilters.Create(UseDefaultExclusions, CustomExclusions, ExcludedExtensions);
+
+    public void SortLargeFiles(string property) => ApplySort(LargeFilesView, property);
+
+    public void SortFileOperations(string property) => ApplySort(FileOperationsView, property);
+
+    private static void ApplySort(ICollectionView view, string property)
+    {
+        var direction = ListSortDirection.Ascending;
+        if (view.SortDescriptions.Count > 0
+            && view.SortDescriptions[0].PropertyName == property
+            && view.SortDescriptions[0].Direction == ListSortDirection.Ascending)
+        {
+            direction = ListSortDirection.Descending;
+        }
+
+        using (view.DeferRefresh())
+        {
+            view.SortDescriptions.Clear();
+            view.SortDescriptions.Add(new SortDescription(property, direction));
+        }
+    }
+
+    private bool FilterLargeFile(object item)
+        => item is FileItem file && MatchesSearch(file, LargeFileSearchText);
+
+    private bool FilterFileOperation(object item)
+        => item is FileItem file && MatchesSearch(file, FileOperationSearchText);
+
+    private static bool MatchesSearch(FileItem file, string text)
+        => string.IsNullOrWhiteSpace(text)
+           || file.Name.Contains(text, StringComparison.OrdinalIgnoreCase)
+           || file.FullPath.Contains(text, StringComparison.OrdinalIgnoreCase);
+
     private void BrowseLargeFilePath()
     {
         var folder = _dialogs.PickFolder("选择大文件扫描目录");
@@ -869,7 +986,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             DeleteModeIndex = SelectedDeleteModeIndex,
             KeepStrategyIndex = SelectedKeepStrategyIndex,
             ConflictIndex = SelectedConflictIndex,
-            SelectedTabIndex = SelectedTabIndex
+            SelectedTabIndex = SelectedTabIndex,
+            UseDefaultExclusions = UseDefaultExclusions,
+            CustomExclusions = CustomExclusions,
+            ExcludedExtensions = ExcludedExtensions
         });
     }
 

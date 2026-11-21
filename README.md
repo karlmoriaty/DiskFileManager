@@ -5,9 +5,9 @@ drives, finds large and duplicate files, suggests safe cleanups, and performs ba
 file operations — from a single self-contained executable that runs off a USB stick
 with no .NET runtime installed.
 
-Version 2.0 focuses on data safety: deletion goes to the recycle bin by default,
-protected system locations are enforced by path boundaries, and every long-running
-scan can be cancelled.
+Version 2.1 focuses on safety and usability: deletion goes to the recycle bin by
+default, protected system locations are enforced by path boundaries, scans can be
+filtered and cancelled, and results can be sorted, searched and exported.
 
 ## Features
 
@@ -23,6 +23,11 @@ scan can be cancelled.
   cache and Downloads.
 - **Batch operations** — copy, move and delete files or whole directories, with
   overwrite/skip/rename conflict policies and a cancellable progress bar.
+- **Scan filters** — system and build directories (`Windows`, `Program Files`,
+  `node_modules`, `.git`, `obj`, `bin`) are excluded by default; extra names, paths and
+  extensions are configurable and persisted.
+- **Sorting, search and export** — large-file and file-operation lists sort from the
+  column headers, filter as you type, and export to UTF-8 CSV.
 - **Operation log** — every action is recorded with its timestamp and result; the log
   file rotates daily and the in-memory buffer is capped.
 
@@ -42,13 +47,23 @@ scan can be cancelled.
 - Reparse points (junctions/symlinks) are skipped during enumeration to avoid loops
   and duplicate scans.
 
+## Download
+
+Prebuilt portable builds are attached to GitHub Releases:
+
+<https://github.com/karlmoriaty/DiskFileManager/releases>
+
+Each release ships `DiskManager_Portable.zip` and a SHA-256 checksum. Unzip anywhere
+and run `启动程序.bat`.
+
 ## Requirements
 
 - Windows 10 (1607 or newer) or Windows 11, x64
 - No installation and no .NET runtime needed — the published build is
   self-contained and single-file
 - Roughly 100–150 MB of disk space
-- Administrator rights are recommended; the manifest requests `highestAvailable`
+- Administrator rights are recommended for system locations; the manifest runs
+  as the invoking user (`asInvoker`), so start the app elevated when needed
 
 ## Running the prebuilt portable build
 

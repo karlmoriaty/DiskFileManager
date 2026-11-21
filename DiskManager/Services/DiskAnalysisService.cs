@@ -17,14 +17,16 @@ public class DiskAnalysisService
         long minSizeBytes,
         int maxResults = 100,
         IProgress<int>? progress = null,
+        ScanFilters? filters = null,
         CancellationToken cancellationToken = default)
-        => Task.Run(() => FindLargeFiles(path, minSizeBytes, maxResults, progress, cancellationToken), cancellationToken);
+        => Task.Run(() => FindLargeFiles(path, minSizeBytes, maxResults, progress, filters, cancellationToken), cancellationToken);
 
     public List<FileItem> FindLargeFiles(
         string path,
         long minSizeBytes,
         int maxResults = 100,
         IProgress<int>? progress = null,
+        ScanFilters? filters = null,
         CancellationToken cancellationToken = default)
     {
         var heap = new PriorityQueue<FileItem, long>();
@@ -67,7 +69,7 @@ public class DiskAnalysisService
             catch (Exception)
             {
             }
-        });
+        }, filters);
 
         progress?.Report(scanned);
 

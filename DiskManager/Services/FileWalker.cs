@@ -19,7 +19,11 @@ public static class FileWalker
         }
     }
 
-    public static void WalkFiles(string path, CancellationToken cancellationToken, Action<string> onFile)
+    public static void WalkFiles(
+        string path,
+        CancellationToken cancellationToken,
+        Action<string> onFile,
+        ScanFilters? filters = null)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
         {
@@ -55,6 +59,11 @@ public static class FileWalker
                 foreach (var directory in Directory.EnumerateDirectories(current, "*", ScanOptions.Create()))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (filters != null && filters.IsExcludedDirectory(directory))
+                    {
+                        continue;
+                    }
+
                     if (IsReparsePoint(directory))
                     {
                         continue;

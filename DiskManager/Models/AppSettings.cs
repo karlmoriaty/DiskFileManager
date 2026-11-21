@@ -10,4 +10,7 @@ public sealed class AppSettings
     public int KeepStrategyIndex { get; set; } = 1;
     public int ConflictIndex { get; set; } = 2;
     public int SelectedTabIndex { get; set; }
+    public bool UseDefaultExclusions { get; set; } = true;
+    public string CustomExclusions { get; set; } = string.Empty;
+    public string ExcludedExtensions { get; set; } = ".tmp;.log";
 }
