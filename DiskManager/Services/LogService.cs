@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using DiskManager.Models;
@@ -9,6 +10,8 @@ namespace DiskManager.Services;
 public class LogService
 {
     private const int MaxInMemoryLogs = 5000;
+    private const int LogRetentionDays = 30;
+    private const string LogFilePrefix = "DiskManager_";
 
     private readonly object _gate = new();
     private readonly List<OperationLog> _logs = new();
@@ -19,17 +22,18 @@ public class LogService
 
     public event EventHandler<OperationLog>? LogAdded;
 
-    public LogService()
+    public LogService(string? logDirectory = null)
     {
         try
         {
-            _logDirectory = Path.Combine(
+            _logDirectory = logDirectory ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "DiskManager",
                 "Logs");
 
             Directory.CreateDirectory(_logDirectory);
             _fileLoggingEnabled = true;
+            CleanupOldLogs(_logDirectory);
         }
         catch (Exception)
         {
@@ -215,4 +219,34 @@ public class LogService
     }
 
     public string? GetLogDirectory() => _logDirectory;
+
+    private static void CleanupOldLogs(string directory)
+    {
+        try
+        {
+            var cutoff = DateTime.Now.Date.AddDays(-LogRetentionDays);
+            foreach (var file in Directory.EnumerateFiles(directory, LogFilePrefix + "*.log"))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                if (name.Length <= LogFilePrefix.Length)
+                {
+                    continue;
+                }
+
+                if (DateTime.TryParseExact(
+                        name.Substring(LogFilePrefix.Length),
+                        "yyyy-MM-dd",
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out var date)
+                    && date < cutoff)
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+        catch (Exception)
+        {
+        }
+    }
 }
