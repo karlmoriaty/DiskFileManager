@@ -31,6 +31,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly SelectionSummary _fileOperationsSummary;
     private string? _restoredCleanupDrive;
     private long _cleanupTotalBytes;
+    private string _lastCleanupScanText = "尚未扫描";
     private int _selectedTabIndex;
 
     private CancellationTokenSource? _cts;
@@ -196,6 +197,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         : $"共 {_fileOperationsSummary.TotalCount} 项，合计 {Utils.SizeFormatter.Format(_fileOperationsSummary.TotalSize)}；已选 {_fileOperationsSummary.SelectedCount} 项 / {Utils.SizeFormatter.Format(_fileOperationsSummary.SelectedSize)}";
 
     public string CleanupTotalFormatted => Utils.SizeFormatter.Format(_cleanupTotalBytes);
+
+    public string LastCleanupScanText
+    {
+        get => _lastCleanupScanText;
+        private set => SetProperty(ref _lastCleanupScanText, value);
+    }
 
     public ICollectionView LargeFilesView
     {
@@ -535,29 +542,36 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var targets = new List<FileItem>();
+        var plan = new List<(DuplicateFileGroup Group, FileItem Keep, List<FileItem> Delete)>();
         var manualSelected = 0;
 
         foreach (var group in DuplicateGroups)
         {
             var selected = group.Files.Where(file => file.IsSelected).ToList();
-            if (selected.Count == 0)
+            FileItem? keep;
+            List<FileItem> delete;
+
+            if (selected.Count == 0 || selected.Count >= group.Files.Count)
             {
-                targets.AddRange(DuplicateFileService.SelectToDelete(group.Files, EffectiveKeepStrategy));
-            }
-            else if (selected.Count >= group.Files.Count)
-            {
-                var keep = DuplicateFileService.SelectKeep(group.Files, EffectiveKeepStrategy);
-                targets.AddRange(group.Files.Where(file => !ReferenceEquals(file, keep)));
+                keep = DuplicateFileService.SelectKeep(group.Files, EffectiveKeepStrategy);
+                delete = keep == null
+                    ? new List<FileItem>()
+                    : group.Files.Where(file => !ReferenceEquals(file, keep)).ToList();
             }
             else
             {
-                targets.AddRange(selected);
+                delete = selected;
+                keep = group.Files.FirstOrDefault(file => !selected.Contains(file));
                 manualSelected += selected.Count;
+            }
+
+            if (keep != null && delete.Count > 0)
+            {
+                plan.Add((group, keep, delete));
             }
         }
 
-        targets = targets.Distinct().ToList();
+        var targets = plan.SelectMany(item => item.Delete).Distinct().ToList();
 
         if (targets.Count == 0)
         {
@@ -565,8 +579,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        var previewLines = plan.Take(5).Select(item =>
+            $"- {item.Group.Name}: 保留 {item.Keep.FullPath}，删除 {item.Delete.Count} 个");
+        var preview = string.Join(Environment.NewLine, previewLines);
+        if (plan.Count > 5)
+        {
+            preview += $"{Environment.NewLine}… 其余 {plan.Count - 5} 组略";
+        }
+
         if (!_dialogs.Confirm(
-                $"将删除 {targets.Count} 个副本（每组至少保留一个{(manualSelected > 0 ? $"，手动选择 {manualSelected} 个" : string.Empty)}）。\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
+                $"将删除 {targets.Count} 个副本，涉及 {plan.Count} 组（每组至少保留一个{(manualSelected > 0 ? $"，手动选择 {manualSelected} 个" : string.Empty)}）。\n\n预览:\n{preview}\n\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
                 "确认删除"))
         {
             return;
@@ -628,6 +650,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var total = suggestions.Sum(suggestion => suggestion.TotalSize);
             _cleanupTotalBytes = total;
             OnPropertyChanged(nameof(CleanupTotalFormatted));
+            LastCleanupScanText = $"上次扫描: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
             StatusText = $"扫描完成，可清理 {Utils.SizeFormatter.Format(total)}";
             _log.Log("扫描清理建议", $"找到 {suggestions.Count} 项清理建议", true);
         });

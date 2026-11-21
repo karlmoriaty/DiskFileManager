@@ -217,8 +217,11 @@
                         <TextBlock Text="提示：回收站按所选磁盘统计和清空；临时文件与浏览器缓存固定在系统盘和当前用户目录。"
                                    Foreground="Gray" Margin="0,0,0,10" TextWrapping="Wrap"/>
 
-                        <TextBlock Text="{Binding CleanupTotalFormatted, StringFormat='可释放合计: {0}'}"
-                                   FontWeight="Bold" Foreground="#2E7D32" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding CleanupTotalFormatted, StringFormat='可释放合计: {0}'}"
+                                       FontWeight="Bold" Foreground="#2E7D32" Margin="0,0,16,0"/>
+                            <TextBlock Text="{Binding LastCleanupScanText}" Foreground="Gray"/>
+                        </StackPanel>
 
                         <ItemsControl x:Name="CleanupSuggestionsItemsControl" ItemsSource="{Binding CleanupSuggestions}">
                             <ItemsControl.ItemTemplate>

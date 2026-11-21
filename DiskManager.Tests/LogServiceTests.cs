@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DiskManager.Services;
@@ -54,5 +56,29 @@ public class LogServiceTests
         }
 
         Assert.Equal(5000, service.GetRecentLogs(10000).Count);
+    }
+
+    [Fact]
+    public void Constructor_RemovesLogsOlderThanRetention()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "DiskManagerTests", "logs", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var oldLog = Path.Combine(directory, "DiskManager_2020-01-01.log");
+        var recentLog = Path.Combine(directory, "DiskManager_" + DateTime.Now.ToString("yyyy-MM-dd") + ".log");
+        File.WriteAllText(oldLog, "old");
+        File.WriteAllText(recentLog, "recent");
+
+        _ = new LogService(directory);
+
+        Assert.False(File.Exists(oldLog));
+        Assert.True(File.Exists(recentLog));
+
+        try
+        {
+            Directory.Delete(directory, true);
+        }
+        catch (Exception)
+        {
+        }
     }
 }

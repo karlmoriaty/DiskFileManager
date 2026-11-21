@@ -28,7 +28,7 @@ jobs:
         run: dotnet build DiskManager.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test DiskManager.Tests/DiskManager.Tests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test DiskManager.Tests/DiskManager.Tests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage" --results-directory TestResults
 
       - name: Upload test results
         if: always()
@@ -36,3 +36,10 @@ jobs:
         with:
           name: test-results
           path: "**/TestResults/*.trx"
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: "**/TestResults/**/coverage.cobertura.xml"

@@ -31,7 +31,7 @@ public class DuplicateFileService
         CancellationToken cancellationToken = default)
     {
         var throttled = new ThrottledProgress(progress);
-        var entries = new List<FileEntry>();
+        var sizeCounts = new Dictionary<long, int>();
         LastSkippedCloudFileCount = 0;
 
         FileWalker.WalkFiles(path, cancellationToken, file =>
@@ -43,8 +43,36 @@ public class DuplicateFileService
                     return;
                 }
 
+                var length = new FileInfo(file).Length;
+                if (length == 0)
+                {
+                    return;
+                }
+
+                sizeCounts.TryGetValue(length, out var count);
+                sizeCounts[length] = count + 1;
+            }
+            catch (Exception)
+            {
+            }
+        }, filters);
+
+        throttled.Report(5, true);
+
+        var entries = new List<FileEntry>();
+        FileWalker.WalkFiles(path, cancellationToken, file =>
+        {
+            try
+            {
+                if (filters != null && filters.IsExcludedFile(file))
+                {
+                    return;
+                }
+
                 var info = new FileInfo(file);
-                if (info.Length == 0)
+                if (info.Length == 0
+                    || !sizeCounts.TryGetValue(info.Length, out var count)
+                    || count < 2)
                 {
                     return;
                 }
