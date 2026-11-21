@@ -56,6 +56,8 @@ internal sealed class FakeDialogService : IDialogService
     public List<string> OpenedPaths { get; } = new();
     public List<string> OpenedFolders { get; } = new();
     public int OpenRecycleBinCalls { get; private set; }
+    public int ShowAboutCalls { get; private set; }
+    public Queue<bool> ConfirmResults { get; } = new();
 
     public string? PickFolder(string description) => FolderToReturn;
 
@@ -66,7 +68,7 @@ internal sealed class FakeDialogService : IDialogService
     public bool Confirm(string message, string title)
     {
         ConfirmCalls++;
-        return ConfirmResult;
+        return ConfirmResults.Count > 0 ? ConfirmResults.Dequeue() : ConfirmResult;
     }
 
     public void Info(string message, string title = "提示") => Infos.Add(message);
@@ -78,4 +80,6 @@ internal sealed class FakeDialogService : IDialogService
     public void OpenFolder(string path) => OpenedFolders.Add(path);
 
     public void OpenRecycleBin() => OpenRecycleBinCalls++;
+
+    public void ShowAbout() => ShowAboutCalls++;
 }
