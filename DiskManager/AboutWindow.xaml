@@ -1,50 +1,129 @@
 <Window x:Class="DiskManager.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="关于 磁盘文件管理器" Height="520" Width="520"
+        Title="关于 磁盘文件管理器" Height="640" Width="620"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource Brush.AppBackground}"
+        FontFamily="Microsoft YaHei UI"
         FontSize="13">
-    <StackPanel Margin="24">
-        <TextBlock Text="磁盘文件管理器" FontSize="22" FontWeight="Bold"/>
-        <TextBlock x:Name="VersionText" Margin="0,6,0,0" Foreground="#6B6B6B"/>
-        <TextBlock Text="便携式 Windows 磁盘与文件管理工具" Margin="0,12,0,0"/>
-        <TextBlock x:Name="RuntimeText" Margin="0,4,0,0" Foreground="#6B6B6B"/>
-        <TextBlock x:Name="PrivilegeText" Margin="0,4,0,0" Foreground="#6B6B6B" TextWrapping="Wrap"/>
+    <Window.Resources>
+        <Style x:Key="MetaLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#8A8782"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+        <Style x:Key="MetaValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="SquareButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="#D6D1C8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#F0EEE6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#E8E5DD"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
-        <TextBlock Text="作者" FontWeight="SemiBold" Margin="0,20,0,6"/>
-        <StackPanel Orientation="Horizontal">
-            <TextBlock Text="karlmoriaty" Margin="0,0,16,0"/>
-            <TextBlock>
-                <Hyperlink NavigateUri="mailto:karlmoriaty@gmail.com"
-                           Foreground="#1F1E1D"
-                           RequestNavigate="Hyperlink_RequestNavigate">
-                    karlmoriaty@gmail.com
-                </Hyperlink>
+    <Grid Margin="40,32,40,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <Image Source="app.ico" Width="84" Height="84" VerticalAlignment="Top"/>
+            <StackPanel Margin="22,2,0,0">
+                <TextBlock Text="磁盘文件管理器" FontSize="26" FontWeight="Light"
+                           Foreground="{StaticResource Brush.TextPrimary}"/>
+                <TextBlock Text="D I S K   F I L E   M A N A G E R" FontSize="9"
+                           Foreground="#8A8782" Margin="0,10,0,0"/>
+                <TextBlock x:Name="VersionText" FontSize="11" Foreground="#8A8782" Margin="0,8,0,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Row="1" Height="1" Background="#E8E5DD" Margin="0,28,0,24"/>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="作者" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="karlmoriaty" Style="{StaticResource MetaValue}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="邮箱" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,0,0,12">
+                <Hyperlink NavigateUri="mailto:karlmoriaty@gmail.com" Foreground="#1F1E1D"
+                           RequestNavigate="Hyperlink_RequestNavigate">karlmoriaty@gmail.com</Hyperlink>
             </TextBlock>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="GitHub" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,12">
+                <Hyperlink NavigateUri="https://github.com/karlmoriaty" Foreground="#1F1E1D"
+                           RequestNavigate="Hyperlink_RequestNavigate">github.com/karlmoriaty</Hyperlink>
+            </TextBlock>
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="项目" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,12">
+                <Hyperlink NavigateUri="https://github.com/karlmoriaty/DiskFileManager" Foreground="#1F1E1D"
+                           RequestNavigate="Hyperlink_RequestNavigate">github.com/karlmoriaty/DiskFileManager</Hyperlink>
+            </TextBlock>
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="运行时" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="4" Grid.Column="1" x:Name="RuntimeText" Style="{StaticResource MetaValue}"/>
+
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="权限" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="5" Grid.Column="1" x:Name="PrivilegeText" Style="{StaticResource MetaValue}"/>
+
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="日志" Style="{StaticResource MetaLabel}"/>
+            <TextBlock Grid.Row="6" Grid.Column="1" x:Name="LogPathText" FontFamily="Consolas"
+                       FontSize="11" Foreground="#6B6B6B" TextWrapping="Wrap"/>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button Content="打开日志目录" Width="110" Style="{StaticResource SquareButton}"
+                    Click="OpenLogFolder_Click" Margin="0,0,8,0"/>
+            <Button Content="关闭" Width="76" Style="{StaticResource SquareButton}" IsCancel="True"/>
         </StackPanel>
-        <TextBlock Margin="0,4,0,0">
-            <Hyperlink NavigateUri="https://github.com/karlmoriaty"
-                       Foreground="#1F1E1D"
-                       RequestNavigate="Hyperlink_RequestNavigate">
-                github.com/karlmoriaty
-            </Hyperlink>
-        </TextBlock>
-
-        <TextBlock Text="项目地址" FontWeight="SemiBold" Margin="0,16,0,6"/>
-        <TextBlock>
-            <Hyperlink NavigateUri="https://github.com/karlmoriaty/DiskFileManager"
-                       Foreground="#1F1E1D"
-                       RequestNavigate="Hyperlink_RequestNavigate">
-                github.com/karlmoriaty/DiskFileManager
-            </Hyperlink>
-        </TextBlock>
-
-        <TextBlock Text="日志目录" FontWeight="SemiBold" Margin="0,16,0,6"/>
-        <TextBox x:Name="LogPathText" IsReadOnly="True" Background="#F3F4F6"/>
-
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
-            <Button Content="打开日志目录" Width="110" Margin="0,0,8,0" Click="OpenLogFolder_Click"/>
-            <Button Content="关闭" Width="80" IsCancel="True"/>
-        </StackPanel>
-    </StackPanel>
+    </Grid>
 </Window>
