@@ -24,6 +24,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _sync;
     private readonly bool _ownsMonitor;
 
+    private readonly SettingsService _settingsService;
+    private readonly SelectionSummary _largeFilesSummary;
+    private readonly SelectionSummary _fileOperationsSummary;
+    private string? _restoredCleanupDrive;
+    private long _cleanupTotalBytes;
+    private int _selectedTabIndex;
+
     private CancellationTokenSource? _cts;
     private Task? _activeTask;
     private bool _isBusy;
@@ -44,7 +51,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         IRecycleBinService? recycleBin = null,
         LogService? log = null,
         PathGuard? guard = null,
-        DiskMonitorService? monitor = null)
+        DiskMonitorService? monitor = null,
+        SettingsService? settingsService = null,
+        AppSettings? settings = null)
     {
         _dialogs = dialogs ?? new WpfDialogService();
         _recycleBin = recycleBin ?? new RecycleBinService();
@@ -53,6 +62,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _files = new FileOperationService(_guard, _recycleBin, _log);
         _cleanup = new CleanupService(_guard, _recycleBin);
         _sync = SynchronizationContext.Current;
+        _settingsService = settingsService ?? new SettingsService();
+        var saved = settings ?? _settingsService.Load();
+        _largeFileScanPath = saved.LargeFileScanPath;
+        _minFileSizeText = saved.MinFileSizeText;
+        _duplicateScanPath = saved.DuplicateScanPath;
+        _selectedDeleteModeIndex = saved.DeleteModeIndex;
+        _selectedKeepStrategyIndex = saved.KeepStrategyIndex;
+        _selectedConflictIndex = saved.ConflictIndex;
+        _selectedTabIndex = saved.SelectedTabIndex;
+        _restoredCleanupDrive = saved.CleanupDrive;
 
         if (monitor == null)
         {
@@ -81,6 +100,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         BatchMoveCommand = new AsyncRelayCommand(BatchMoveAsync);
         BatchDeleteCommand = new AsyncRelayCommand(BatchDeleteAsync);
         CancelCommand = new RelayCommand(Cancel, () => IsBusy);
+        BrowseLargeFilePathCommand = new RelayCommand(BrowseLargeFilePath);
+        BrowseDuplicatePathCommand = new RelayCommand(BrowseDuplicatePath);
+        SelectAllLargeFilesCommand = new RelayCommand(SelectAllLargeFiles);
+        SelectAllFileOperationsCommand = new RelayCommand(SelectAllFileOperations);
+        RemoveSelectedFileOperationsCommand = new RelayCommand(RemoveSelectedFileOperations);
+        ToggleAllDuplicateFilesCommand = new RelayCommand(ToggleAllDuplicateFiles);
+        ExportLargeFilesCommand = new RelayCommand(ExportLargeFiles);
+        ExportDuplicatesCommand = new RelayCommand(ExportDuplicates);
+        OpenRecycleBinCommand = new RelayCommand(() => _dialogs.OpenRecycleBin());
+        OpenLogFolderCommand = new RelayCommand(OpenLogFolder);
+
+        _largeFilesSummary = new SelectionSummary(LargeFiles);
+        _fileOperationsSummary = new SelectionSummary(FileOperationItems);
+        _largeFilesSummary.Changed += (_, _) => OnPropertyChanged(nameof(LargeFilesSummary));
+        _fileOperationsSummary.Changed += (_, _) => OnPropertyChanged(nameof(FileOperationsSummary));
 
         _log.LogAdded += OnLogAdded;
         _monitor.SnapshotCaptured += OnSnapshotCaptured;
@@ -117,10 +151,39 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand BatchMoveCommand { get; }
     public AsyncRelayCommand BatchDeleteCommand { get; }
     public RelayCommand CancelCommand { get; }
+    public RelayCommand BrowseLargeFilePathCommand { get; }
+    public RelayCommand BrowseDuplicatePathCommand { get; }
+    public RelayCommand SelectAllLargeFilesCommand { get; }
+    public RelayCommand SelectAllFileOperationsCommand { get; }
+    public RelayCommand RemoveSelectedFileOperationsCommand { get; }
+    public RelayCommand ToggleAllDuplicateFilesCommand { get; }
+    public RelayCommand ExportLargeFilesCommand { get; }
+    public RelayCommand ExportDuplicatesCommand { get; }
+    public RelayCommand OpenRecycleBinCommand { get; }
+    public RelayCommand OpenLogFolderCommand { get; }
 
     public IReadOnlyList<string> DeleteModeOptions { get; } = new[] { "移到回收站（可恢复）", "永久删除（不可恢复）" };
     public IReadOnlyList<string> KeepStrategyOptions { get; } = new[] { "保留路径最短的副本", "保留最新的副本", "保留最旧的副本" };
     public IReadOnlyList<string> ConflictOptions { get; } = new[] { "覆盖同名文件", "跳过同名文件", "重命名新文件" };
+
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set => SetProperty(ref _selectedTabIndex, value);
+    }
+
+    public string VersionText { get; } =
+        "v" + (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.0.0");
+
+    public string LargeFilesSummary => LargeFiles.Count == 0
+        ? "尚未扫描"
+        : $"共 {_largeFilesSummary.TotalCount} 个，合计 {Utils.SizeFormatter.Format(_largeFilesSummary.TotalSize)}；已选 {_largeFilesSummary.SelectedCount} 个 / {Utils.SizeFormatter.Format(_largeFilesSummary.SelectedSize)}";
+
+    public string FileOperationsSummary => FileOperationItems.Count == 0
+        ? "列表为空"
+        : $"共 {_fileOperationsSummary.TotalCount} 项，合计 {Utils.SizeFormatter.Format(_fileOperationsSummary.TotalSize)}；已选 {_fileOperationsSummary.SelectedCount} 项 / {Utils.SizeFormatter.Format(_fileOperationsSummary.SelectedSize)}";
+
+    public string CleanupTotalFormatted => Utils.SizeFormatter.Format(_cleanupTotalBytes);
 
     public string LargeFileScanPath
     {
@@ -236,7 +299,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         SelectedCleanupDrive = previous != null && Drives.Contains(previous)
             ? previous
-            : Drives.FirstOrDefault();
+            : _restoredCleanupDrive != null && Drives.Contains(_restoredCleanupDrive)
+                ? _restoredCleanupDrive
+                : Drives.FirstOrDefault();
+        _restoredCleanupDrive = null;
 
         UpdateTrend();
         _log.Log("刷新磁盘信息", $"发现 {Disks.Count} 个磁盘", true);
@@ -387,9 +453,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var targets = DuplicateGroups
-            .SelectMany(group => DuplicateFileService.SelectToDelete(group.Files, EffectiveKeepStrategy))
-            .ToList();
+        var targets = new List<FileItem>();
+        var manualSelected = 0;
+
+        foreach (var group in DuplicateGroups)
+        {
+            var selected = group.Files.Where(file => file.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                targets.AddRange(DuplicateFileService.SelectToDelete(group.Files, EffectiveKeepStrategy));
+            }
+            else if (selected.Count >= group.Files.Count)
+            {
+                var keep = DuplicateFileService.SelectKeep(group.Files, EffectiveKeepStrategy);
+                targets.AddRange(group.Files.Where(file => !ReferenceEquals(file, keep)));
+            }
+            else
+            {
+                targets.AddRange(selected);
+                manualSelected += selected.Count;
+            }
+        }
+
+        targets = targets.Distinct().ToList();
 
         if (targets.Count == 0)
         {
@@ -398,7 +484,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         if (!_dialogs.Confirm(
-                $"将删除 {targets.Count} 个副本（每组保留一个）。\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
+                $"将删除 {targets.Count} 个副本（每组至少保留一个{(manualSelected > 0 ? $"，手动选择 {manualSelected} 个" : string.Empty)}）。\n方式: {DeleteModeOptions[SelectedDeleteModeIndex]}",
                 "确认删除"))
         {
             return;
@@ -458,6 +544,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
 
             var total = suggestions.Sum(suggestion => suggestion.TotalSize);
+            _cleanupTotalBytes = total;
+            OnPropertyChanged(nameof(CleanupTotalFormatted));
             StatusText = $"扫描完成，可清理 {Utils.SizeFormatter.Format(total)}";
             _log.Log("扫描清理建议", $"找到 {suggestions.Count} 项清理建议", true);
         });
@@ -559,52 +647,231 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void AddFiles()
     {
         var files = _dialogs.PickFiles("选择要操作的文件");
-        foreach (var fileName in files)
-        {
-            try
-            {
-                var info = new FileInfo(fileName);
-                FileOperationItems.Add(new FileItem
-                {
-                    FullPath = fileName,
-                    Size = info.Length,
-                    LastModified = info.LastWriteTime,
-                    IsDirectory = false
-                });
-            }
-            catch (Exception ex)
-            {
-                _log.Log("添加文件", fileName, false, ex.Message);
-            }
-        }
+        AddPaths(files);
     }
 
     private void AddFolder()
     {
         var folder = _dialogs.PickFolder("选择要操作的文件夹");
-        if (string.IsNullOrEmpty(folder))
+        if (!string.IsNullOrEmpty(folder))
+        {
+            AddPaths(new[] { folder });
+        }
+    }
+
+    public void AddPaths(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                AddDirectoryItem(path);
+            }
+            else if (File.Exists(path))
+            {
+                AddFileItem(path);
+            }
+        }
+    }
+
+    private void AddFileItem(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            FileOperationItems.Add(new FileItem
+            {
+                FullPath = path,
+                Size = info.Length,
+                LastModified = info.LastWriteTime,
+                IsDirectory = false
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.Log("添加文件", path, false, ex.Message);
+        }
+    }
+
+    private void AddDirectoryItem(string path)
+    {
+        try
+        {
+            var info = new DirectoryInfo(path);
+            var item = new FileItem
+            {
+                FullPath = path,
+                Size = 0,
+                LastModified = info.LastWriteTime,
+                IsDirectory = true
+            };
+
+            FileOperationItems.Add(item);
+
+            _ = Task.Run(() =>
+            {
+                var size = DiskAnalysisService.GetDirectorySize(path);
+                Post(() => item.Size = size);
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.Log("添加文件夹", path, false, ex.Message);
+        }
+    }
+
+    private void ClearList() => FileOperationItems.Clear();
+
+    private void BrowseLargeFilePath()
+    {
+        var folder = _dialogs.PickFolder("选择大文件扫描目录");
+        if (!string.IsNullOrEmpty(folder))
+        {
+            LargeFileScanPath = folder;
+        }
+    }
+
+    private void BrowseDuplicatePath()
+    {
+        var folder = _dialogs.PickFolder("选择重复文件扫描目录");
+        if (!string.IsNullOrEmpty(folder))
+        {
+            DuplicateScanPath = folder;
+        }
+    }
+
+    private void SelectAllLargeFiles()
+    {
+        var select = LargeFiles.Any(item => !item.IsSelected);
+        foreach (var item in LargeFiles)
+        {
+            item.IsSelected = select;
+        }
+    }
+
+    private void SelectAllFileOperations()
+    {
+        var select = FileOperationItems.Any(item => !item.IsSelected);
+        foreach (var item in FileOperationItems)
+        {
+            item.IsSelected = select;
+        }
+    }
+
+    private void RemoveSelectedFileOperations()
+    {
+        foreach (var item in FileOperationItems.Where(item => item.IsSelected).ToList())
+        {
+            FileOperationItems.Remove(item);
+        }
+    }
+
+    private void ToggleAllDuplicateFiles()
+    {
+        var files = DuplicateGroups.SelectMany(group => group.Files).ToList();
+        var select = files.Any(file => !file.IsSelected);
+        foreach (var file in files)
+        {
+            file.IsSelected = select;
+        }
+    }
+
+    private void ExportLargeFiles()
+    {
+        if (LargeFiles.Count == 0)
+        {
+            _dialogs.Info("没有可导出的结果，请先扫描大文件。");
+            return;
+        }
+
+        var path = _dialogs.PickSaveFile("导出大文件结果", "large-files.csv", "CSV 文件|*.csv");
+        if (string.IsNullOrEmpty(path))
         {
             return;
         }
 
         try
         {
-            var info = new DirectoryInfo(folder);
-            FileOperationItems.Add(new FileItem
-            {
-                FullPath = folder,
-                Size = 0,
-                LastModified = info.LastWriteTime,
-                IsDirectory = true
-            });
+            var lines = new List<string> { "路径,大小(字节),大小,修改时间" };
+            lines.AddRange(LargeFiles.Select(item =>
+                $"{EscapeCsv(item.FullPath)},{item.Size},{EscapeCsv(item.SizeFormatted)},{EscapeCsv(item.LastModified.ToString("yyyy-MM-dd HH:mm:ss"))}"));
+
+            File.WriteAllLines(path, lines, new System.Text.UTF8Encoding(true));
+            StatusText = $"已导出 {LargeFiles.Count} 条到 {path}";
+            _log.Log("导出大文件", path, true);
         }
         catch (Exception ex)
         {
-            _log.Log("添加文件夹", folder, false, ex.Message);
+            _dialogs.Error(ex.Message);
+            _log.Log("导出大文件", path, false, ex.Message);
         }
     }
 
-    private void ClearList() => FileOperationItems.Clear();
+    private void ExportDuplicates()
+    {
+        if (DuplicateGroups.Count == 0)
+        {
+            _dialogs.Info("没有可导出的结果，请先扫描重复文件。");
+            return;
+        }
+
+        var path = _dialogs.PickSaveFile("导出重复文件结果", "duplicates.csv", "CSV 文件|*.csv");
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        try
+        {
+            var lines = new List<string> { "哈希,单文件大小,总浪费空间,路径" };
+            foreach (var group in DuplicateGroups)
+            {
+                foreach (var file in group.Files)
+                {
+                    lines.Add($"{EscapeCsv(group.FileHash)},{group.FileSize},{group.TotalWastedSpace},{EscapeCsv(file.FullPath)}");
+                }
+            }
+
+            File.WriteAllLines(path, lines, new System.Text.UTF8Encoding(true));
+            StatusText = $"已导出 {DuplicateGroups.Count} 组到 {path}";
+            _log.Log("导出重复文件", path, true);
+        }
+        catch (Exception ex)
+        {
+            _dialogs.Error(ex.Message);
+            _log.Log("导出重复文件", path, false, ex.Message);
+        }
+    }
+
+    private static string EscapeCsv(string value)
+        => "\"" + value.Replace("\"", "\"\"") + "\"";
+
+    private void OpenLogFolder()
+    {
+        var directory = _log.GetLogDirectory();
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+        {
+            _dialogs.Info("日志目录尚未创建。");
+            return;
+        }
+
+        _dialogs.OpenFolder(directory);
+    }
+
+    private void SaveSettings()
+    {
+        _settingsService.Save(new AppSettings
+        {
+            LargeFileScanPath = LargeFileScanPath,
+            MinFileSizeText = MinFileSizeText,
+            DuplicateScanPath = DuplicateScanPath,
+            CleanupDrive = SelectedCleanupDrive,
+            DeleteModeIndex = SelectedDeleteModeIndex,
+            KeepStrategyIndex = SelectedKeepStrategyIndex,
+            ConflictIndex = SelectedConflictIndex,
+            SelectedTabIndex = SelectedTabIndex
+        });
+    }
 
     private async Task BatchCopyAsync()
     {
@@ -817,7 +1084,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        _sync.Post(_ => action(), null);
+        try
+        {
+            _sync.Post(_ =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception)
+                {
+                }
+            }, null);
+        }
+        catch (Exception)
+        {
+        }
     }
 
     public void Dispose()
@@ -832,5 +1114,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var active = Interlocked.Exchange(ref _cts, null);
         active?.Cancel();
         active?.Dispose();
+
+        _largeFilesSummary.Dispose();
+        _fileOperationsSummary.Dispose();
+        SaveSettings();
     }
 }

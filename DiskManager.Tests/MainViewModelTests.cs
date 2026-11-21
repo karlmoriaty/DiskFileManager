@@ -32,7 +32,8 @@ public class MainViewModelTests : IDisposable
             new FakeRecycleBin(),
             new LogService(),
             new PathGuard(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>()),
-            new DiskMonitorService(_dataDirectory));
+            new DiskMonitorService(_dataDirectory),
+            new SettingsService(Path.Combine(_dataDirectory, "settings")));
 
     [Fact]
     public void Constructor_InitialisesDisksAndStatus()

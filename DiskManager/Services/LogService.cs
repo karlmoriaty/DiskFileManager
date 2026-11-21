@@ -213,4 +213,6 @@ public class LogService
             return _logFilePath;
         }
     }
+
+    public string? GetLogDirectory() => _logDirectory;
 }

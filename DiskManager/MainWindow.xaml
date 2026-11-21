@@ -8,13 +8,18 @@
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="磁盘文件管理器" Height="760" Width="1200"
         WindowStartupLocation="CenterScreen">
+    <Window.InputBindings>
+        <KeyBinding Key="F5" Command="{Binding RefreshDisksCommand}"/>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
+    </Window.InputBindings>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TabControl Grid.Row="0" x:Name="MainTabControl">
+        <TabControl Grid.Row="0" x:Name="MainTabControl" SelectedIndex="{Binding SelectedTabIndex}">
             <TabItem Header="磁盘概览">
                 <ScrollViewer>
                     <StackPanel Margin="10">
@@ -30,7 +35,8 @@
                                     <GridViewColumn Header="使用率" Width="100">
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
-                                                <ProgressBar Value="{Binding UsedPercentage, Mode=OneWay}" Maximum="100" Height="20" Width="80"/>
+                                                <ProgressBar Value="{Binding UsedPercentage, Mode=OneWay}" Maximum="100" Height="20" Width="80"
+                                                         Foreground="{Binding UsedPercentage, Converter={StaticResource UsageToBrushConverter}}"/>
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
@@ -38,7 +44,10 @@
                             </ListView.View>
                         </ListView>
 
-                        <Button Content="刷新磁盘信息" Command="{Binding RefreshDisksCommand}" Width="120" HorizontalAlignment="Left"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Button Content="刷新磁盘信息" Command="{Binding RefreshDisksCommand}" Width="120" Margin="0,0,10,0"/>
+                            <Button Content="打开日志文件夹" Command="{Binding OpenLogFolderCommand}" Width="120"/>
+                        </StackPanel>
 
                         <TextBlock Text="空间使用趋势" FontSize="16" FontWeight="Bold" Margin="0,20,0,10"/>
                         <TextBlock Text="{Binding TrendText}" TextWrapping="Wrap" Margin="0,0,0,10"/>
@@ -79,10 +88,20 @@
                         <TextBlock Text="最小文件大小(MB):" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <TextBox Width="80" Margin="0,0,10,0"
                                  Text="{Binding MinFileSizeText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Content="浏览…" Command="{Binding BrowseLargeFilePathCommand}" Width="70" Margin="0,0,10,0"/>
                         <Button Content="扫描大文件" Command="{Binding ScanLargeFilesCommand}" Width="100"/>
                     </StackPanel>
 
-                    <ListView Grid.Row="1" x:Name="LargeFilesListView" ItemsSource="{Binding LargeFiles}">
+                    <Grid Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{Binding LargeFilesSummary}" Foreground="Gray" Margin="0,0,0,6"/>
+
+                    <ListView Grid.Row="1" x:Name="LargeFilesListView" ItemsSource="{Binding LargeFiles}"
+                              MouseDoubleClick="LargeFilesListView_MouseDoubleClick">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="选择" Width="60">
@@ -99,12 +118,15 @@
                             </GridView>
                         </ListView.View>
                     </ListView>
+                    </Grid>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="全选/全不选" Command="{Binding SelectAllLargeFilesCommand}" Width="100" Margin="0,0,10,0"/>
                         <Button Content="删除选中文件" Command="{Binding DeleteLargeFilesCommand}" Width="120" Margin="0,0,10,0"/>
                         <Button Content="打开文件位置" Width="120"
                                 Command="{Binding OpenFileLocationCommand}"
                                 CommandParameter="{Binding SelectedItem, ElementName=LargeFilesListView}"/>
+                        <Button Content="导出 CSV" Command="{Binding ExportLargeFilesCommand}" Width="90" Margin="10,0,0,0"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
@@ -125,7 +147,9 @@
                         <ComboBox Width="160" Margin="0,0,10,0"
                                   ItemsSource="{Binding KeepStrategyOptions}"
                                   SelectedIndex="{Binding SelectedKeepStrategyIndex}"/>
+                        <Button Content="浏览…" Command="{Binding BrowseDuplicatePathCommand}" Width="70" Margin="0,0,10,0"/>
                         <Button Content="扫描重复文件" Command="{Binding ScanDuplicatesCommand}" Width="120"/>
+                        <Button Content="导出 CSV" Command="{Binding ExportDuplicatesCommand}" Width="90" Margin="10,0,0,0"/>
                     </StackPanel>
 
                     <TreeView Grid.Row="1" x:Name="DuplicateFilesTreeView" ItemsSource="{Binding DuplicateGroups}"
@@ -142,15 +166,20 @@
                                 </StackPanel>
                                 <HierarchicalDataTemplate.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding FullPath}"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding FullPath}"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </HierarchicalDataTemplate.ItemTemplate>
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
 
-                    <Button Grid.Row="2" Content="删除重复文件(按策略保留一个)" Command="{Binding DeleteDuplicatesCommand}"
-                            Width="200" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="全选副本/全不选" Command="{Binding ToggleAllDuplicateFilesCommand}" Width="130" Margin="0,0,10,0"/>
+                        <Button Content="删除选中副本(未选按策略)" Command="{Binding DeleteDuplicatesCommand}" Width="180"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
 
@@ -162,11 +191,15 @@
                             <ComboBox Width="90" Margin="0,0,10,0"
                                       ItemsSource="{Binding Drives}"
                                       SelectedItem="{Binding SelectedCleanupDrive}"/>
-                            <Button Content="扫描清理建议" Command="{Binding ScanCleanupCommand}" Width="120"/>
+                            <Button Content="扫描清理建议" Command="{Binding ScanCleanupCommand}" Width="120" Margin="0,0,10,0"/>
+                            <Button Content="打开回收站" Command="{Binding OpenRecycleBinCommand}" Width="100"/>
                         </StackPanel>
 
                         <TextBlock Text="提示：回收站按所选磁盘统计和清空；临时文件与浏览器缓存固定在系统盘和当前用户目录。"
                                    Foreground="Gray" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+                        <TextBlock Text="{Binding CleanupTotalFormatted, StringFormat='可释放合计: {0}'}"
+                                   FontWeight="Bold" Foreground="#2E7D32" Margin="0,0,0,8"/>
 
                         <ItemsControl x:Name="CleanupSuggestionsItemsControl" ItemsSource="{Binding CleanupSuggestions}">
                             <ItemsControl.ItemTemplate>
@@ -231,7 +264,10 @@
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                         <Button Content="添加文件" Command="{Binding AddFilesCommand}" Width="100" Margin="0,0,10,0"/>
                         <Button Content="添加文件夹" Command="{Binding AddFolderCommand}" Width="100" Margin="0,0,10,0"/>
-                        <Button Content="清空列表" Command="{Binding ClearListCommand}" Width="100"/>
+                        <Button Content="全选/全不选" Command="{Binding SelectAllFileOperationsCommand}" Width="100" Margin="0,0,10,0"/>
+                        <Button Content="移除选中" Command="{Binding RemoveSelectedFileOperationsCommand}" Width="90" Margin="0,0,10,0"/>
+                        <Button Content="清空列表" Command="{Binding ClearListCommand}" Width="100" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding FileOperationsSummary}" Foreground="Gray" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
@@ -240,7 +276,9 @@
                                   SelectedIndex="{Binding SelectedConflictIndex}"/>
                     </StackPanel>
 
-                    <ListView Grid.Row="2" x:Name="FileOperationListView" ItemsSource="{Binding FileOperationItems}">
+                    <ListView Grid.Row="2" x:Name="FileOperationListView" ItemsSource="{Binding FileOperationItems}"
+                              AllowDrop="True" DragOver="FileOperationListView_DragOver" Drop="FileOperationListView_Drop"
+                              MouseDoubleClick="FileOperationListView_MouseDoubleClick">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="选择" Width="60">
@@ -291,6 +329,7 @@
                                  Value="{Binding ProgressValue, Mode=OneWay}"
                                  IsIndeterminate="{Binding IsProgressIndeterminate}"
                                  Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                    <TextBlock Text="{Binding VersionText}" Foreground="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
