@@ -10,9 +10,9 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <RootNamespace>DiskManager</RootNamespace>
     <AssemblyName>DiskManager</AssemblyName>
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <Version>2.4.4</Version>
+    <AssemblyVersion>2.4.4.0</AssemblyVersion>
+    <FileVersion>2.4.4.0</FileVersion>
     <Product>Disk File Manager</Product>
     <Company>karlmoriaty</Company>
     <Description>Portable Windows disk and file manager</Description>

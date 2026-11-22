@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.4.4 (2026-11-22)
+
+### Added
+- About dialog with version, runtime, privilege level, log-folder shortcut and repository link.
+- Recent target folders (five most recent) reused for copy and move operations.
+- File-system column and a five-cell metrics strip (disks, capacity, used, free, peak usage) on the disk overview.
+- Compact operation log with neutral status dots.
+
+### Changed
+- Warm editorial theme with a warm ivory surface, grey navigation rail and ink text.
+- Explorer-style layout: 200 px navigation rail, full-width lists, 32 px rows and collapsible detail panel.
+- Unified typography: Microsoft YaHei UI with ClearType, 13 px body, 12 px table headers and monospaced log timestamps.
+- Disk overview rebuilt as a dense metrics view with 3 px usage tracks, right-aligned percentages and objective trend figures (7-day change, days to full).
+- Numeric columns right-aligned with monospaced figures.
+
+### Fixed
+- Startup stall on slow removable drives: drive enumeration moved out of `PathGuard` and the disk list refreshes in the background.
+- Duplicate deletion now shows a per-group preview (kept path and delete count) before running.
+- Permanent deletes of 1 GB or more require a second confirmation.
+- Batch operations surface permission failures and show an elevation hint.
+- Duplicate detection keeps only size-collision candidates in memory via a two-pass size census.
+- Log retention prunes files older than 30 days on startup.
+- Window layout ignores off-screen coordinates when restoring.
+
 ## v2.1.0 (2026-11-21)
 
 ### Added

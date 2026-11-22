@@ -16,7 +16,7 @@ public partial class AboutWindow : Window
     {
         InitializeComponent();
         _logDirectory = logDirectory;
-        VersionText.Text = "版本 " + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.1.0");
+        VersionText.Text = "版本 " + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.4.4");
         RuntimeText.Text = $"运行时 .NET {Environment.Version} · {Environment.OSVersion}";
         PrivilegeText.Text = IsElevated()
             ? "权限：管理员"

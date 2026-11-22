@@ -5,9 +5,11 @@ drives, finds large and duplicate files, suggests safe cleanups, and performs ba
 file operations — from a single self-contained executable that runs off a USB stick
 with no .NET runtime installed.
 
-Version 2.1 focuses on safety and usability: deletion goes to the recycle bin by
-default, protected system locations are enforced by path boundaries, scans can be
-filtered and cancelled, and results can be sorted, searched and exported.
+Version 2.4 focuses on the interface: a warm editorial theme, an explorer-style
+layout and a dense disk overview with objective trend figures. Safety and usability
+carry over from 2.1: deletion goes to the recycle bin by default, protected system
+locations are enforced by path boundaries, scans can be filtered and cancelled, and
+results can be sorted, searched and exported.
 
 ## Features
 
