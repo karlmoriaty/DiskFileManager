@@ -191,7 +191,9 @@ public class UxPolishTests : IDisposable
         var low = (System.Windows.Media.Brush)converter.Convert(
             30d, typeof(object), string.Empty, System.Globalization.CultureInfo.InvariantCulture);
 
-        Assert.Equal(System.Windows.Media.Brushes.IndianRed, high);
-        Assert.Equal(System.Windows.Media.Brushes.SeaGreen, low);
+        Assert.Equal(System.Windows.Media.Color.FromRgb(0x8C, 0x3A, 0x35),
+            ((System.Windows.Media.SolidColorBrush)high).Color);
+        Assert.Equal(System.Windows.Media.Color.FromRgb(0x1F, 0x1E, 0x1D),
+            ((System.Windows.Media.SolidColorBrush)low).Color);
     }
 }

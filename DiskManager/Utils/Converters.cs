@@ -30,10 +30,10 @@ namespace DiskManager.Utils
             if (value is bool isSafe)
             {
                 return isSafe
-                    ? new SolidColorBrush(Color.FromRgb(0x16, 0xA3, 0x4A))
-                    : new SolidColorBrush(Color.FromRgb(0xD9, 0x77, 0x06));
+                    ? new SolidColorBrush(Color.FromRgb(0x5F, 0x7A, 0x61))
+                    : new SolidColorBrush(Color.FromRgb(0x8C, 0x3A, 0x35));
             }
-            return new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B));
+            return new SolidColorBrush(Color.FromRgb(0x8A, 0x87, 0x82));
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
